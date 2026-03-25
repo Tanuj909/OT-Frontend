@@ -11,8 +11,20 @@ import HospitalManagement from "../features/superAdmin/pages/HospitalManagement"
 import AdminsManagement from "../features/superAdmin/pages/AdminsManagement";
 
 import OTManagement from "../features/admin/pages/OTManagement";
+import OTRoomManagement from "../features/admin/pages/OTRoomManagement";
+import AllRooms from "../features/admin/pages/AllRooms";
+import OtRoom from "../features/admin/pages/OtRoom";
+import StaffManagement from "../features/staff/pages/StaffManagement";
+import StaffSchedulePage from "../features/staff/pages/StaffSchedulePage";
+import StaffAvailabilityPage from "../features/staff/pages/StaffAvailabilityPage";
+import EquipmentManagement from "../features/equipment/pages/EquipmentManagement";
+import EquipmentAttributePage from "../features/equipment/pages/EquipmentAttributePage";
+import CatalogManagement from "../features/catalog/pages/CatalogManagement";
+import OperationManagement from "../features/operations/pages/OperationManagement";
+import CatalogPricePage from "../features/catalog/pages/CatalogPricePage";
+import WardManagement from "../features/admin/pages/WardManagement";
 
-// Placeholder component — baad mein real pages se replace karna
+// Placeholder component
 const Page = ({ title }) => (
   <div style={{ padding: "2rem" }}>
     <h2>{title}</h2>
@@ -23,59 +35,53 @@ const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* Public */}
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<PageLayout><Page title="403 — Access Denied" /></PageLayout>} />
 
-        {/* Protected — login hona chahiye */}
+        {/* Protected */}
         <Route element={<ProtectedRoute />}>
-
-          {/* Common Routes for all logged-in users — Dashboard sabke liye common hai */}
           <Route element={<PageLayout><Outlet /></PageLayout>}>
             <Route path="/dashboard" element={<Page title="Dashboard" />} />
 
-            {/* SUPER_ADMIN specific routes */}
-            <Route element={<RoleGuard allowedRoles={[ROLES.SUPER_ADMIN]} />}>
-              <Route path="/hospital-management" element={<HospitalManagement />} />
-              <Route path="/admin-management" element={<AdminsManagement />} />
-            </Route>
+            {/* SUPER_ADMIN Routes */}
+            <Route path="/hospital-management" element={<RoleGuard allowedRoles={[ROLES.SUPER_ADMIN]}><HospitalManagement /></RoleGuard>} />
+            <Route path="/admin-management" element={<RoleGuard allowedRoles={[ROLES.SUPER_ADMIN]}><AdminsManagement /></RoleGuard>} />
 
-            {/* ADMIN specific routes */}
-            <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
-              <Route path="/staff-management" element={<Page title="Staff Management" />} />
-              <Route path="/ot-management" element={<OTManagement />} />
-              <Route path="/ot-room-management" element={<Page title="OT Room Management" />} />
-              <Route path="/ot-item-catalog" element={<Page title="OT Item Catalog" />} />
-              <Route path="/ot-ward" element={<Page title="OT Ward" />} />
-              <Route path="/equipment-management" element={<Page title="Equipment Management" />} />
-            </Route>
+            {/* ADMIN Routes */}
+            <Route path="/staff-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><StaffManagement /></RoleGuard>} />
+            <Route path="/staff-schedule/:id" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><StaffSchedulePage /></RoleGuard>} />
+            <Route path="/staff-availability/:id" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><StaffAvailabilityPage /></RoleGuard>} />
+            <Route path="/equipment-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><EquipmentManagement /></RoleGuard>} />
+            <Route path="/equipment-attributes/:id" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><EquipmentAttributePage /></RoleGuard>} />
+            <Route path="/operations-list" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><OperationManagement /></RoleGuard>} />
+            <Route path="/ot-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><OTManagement /></RoleGuard>} />
+            <Route path="/ot-room-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><OTRoomManagement /></RoleGuard>} />
+            <Route path="/all-rooms" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><AllRooms /></RoleGuard>} />
+            <Route path="/ot-room/:id" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><OtRoom /></RoleGuard>} />
+            <Route path="/ot-item-catalog" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><CatalogManagement /></RoleGuard>} />
+            <Route path="/ot-price-catalog/:id" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><CatalogPricePage /></RoleGuard>} />
+            <Route path="/ot-ward" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><WardManagement /></RoleGuard>} />
 
-            {/* RECEPTIONIST specific routes */}
-            <Route element={<RoleGuard allowedRoles={[ROLES.RECEPTIONIST]} />}>
-              <Route path="/operation-management" element={<Page title="Operation Management" />} />
-              <Route path="/room-management" element={<Page title="Room Management" />} />
-              <Route path="/ward-management" element={<Page title="Ward Management" />} />
-            </Route>
+            {/* SHARED (ADMIN & RECEPTIONIST) Routes */}
+            <Route path="/operation-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.RECEPTIONIST]}><Page title="Surgery Requests" /></RoleGuard>} />
+            
+            {/* RECEPTIONIST specific */}
+            <Route path="/room-management" element={<RoleGuard allowedRoles={[ROLES.RECEPTIONIST]}><Page title="Room Management" /></RoleGuard>} />
+            <Route path="/ward-management" element={<RoleGuard allowedRoles={[ROLES.RECEPTIONIST]}><Page title="Ward Management" /></RoleGuard>} />
 
-            {/* SURGEON specific routes */}
-            <Route element={<RoleGuard allowedRoles={[ROLES.SURGEON]} />}>
-              <Route path="/pre-op" element={<Page title="Manage Pre-OP" />} />
-              <Route path="/intra-op" element={<Page title="Manage Intra-OP" />} />
-              <Route path="/iv-fluids" element={<Page title="IV Fluids" />} />
-              <Route path="/vitals-management" element={<Page title="Vitals Management" />} />
-            </Route>
+            {/* SURGEON specific */}
+            <Route path="/pre-op" element={<RoleGuard allowedRoles={[ROLES.SURGEON]}><Page title="Manage Pre-OP" /></RoleGuard>} />
+            <Route path="/intra-op" element={<RoleGuard allowedRoles={[ROLES.SURGEON]}><Page title="Manage Intra-OP" /></RoleGuard>} />
+            <Route path="/iv-fluids" element={<RoleGuard allowedRoles={[ROLES.SURGEON]}><Page title="IV Fluids" /></RoleGuard>} />
+            <Route path="/vitals-management" element={<RoleGuard allowedRoles={[ROLES.SURGEON]}><Page title="Vitals Management" /></RoleGuard>} />
 
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
-
-          {/* Default redirect — role ke hisaab se pehle page pe bhejo */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
         </Route>
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
-
       </Routes>
     </BrowserRouter>
   );

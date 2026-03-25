@@ -29,7 +29,7 @@ export const ROLE_PERMISSIONS = {
     canManageOTItems: true,
     canManageOTWard: true,
     canManageEquipment: true,
-    canManageOperations: false,
+    canManageOperations: true,
     canManageRooms: false,
     canManageWards: false,
     canManagePreOP: false,

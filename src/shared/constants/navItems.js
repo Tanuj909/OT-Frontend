@@ -47,6 +47,13 @@ export const NAV_ITEMS = [
     allowedRoles: [ROLES.ADMIN],
   },
   {
+    id: "all-rooms",
+    label: "All Rooms",
+    path: "/all-rooms",
+    icon: "fa-solid fa-door-open",
+    allowedRoles: [ROLES.ADMIN],
+  },
+  {
     id: "staff",
     label: "Staff",
     path: "/staff-management",
@@ -61,9 +68,30 @@ export const NAV_ITEMS = [
     allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
   },
   {
+    id: "catalog",
+    label: "OT Catalog",
+    path: "/ot-item-catalog",
+    icon: "fa-solid fa-list-check",
+    allowedRoles: [ROLES.ADMIN],
+  },
+  {
+    id: "equipment",
+    label: "Equipment",
+    path: "/equipment-management",
+    icon: "fa-solid fa-microscope",
+    allowedRoles: [ROLES.ADMIN],
+  },
+  {
+    id: "wards",
+    label: "Wards",
+    path: "/ot-ward",
+    icon: "fa-solid fa-hospital-user",
+    allowedRoles: [ROLES.ADMIN],
+  },
+  {
     id: "operations",
     label: "Operations",
-    path: "/ot-ward", // Using existing path for now
+    path: "/operations-list", 
     icon: "fa-solid fa-scalpel",
     allowedRoles: [ROLES.ADMIN],
   },

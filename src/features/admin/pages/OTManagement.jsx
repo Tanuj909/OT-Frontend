@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAdmin } from "../hooks/useAdmin";
 
 const OTManagement = () => {
@@ -6,6 +7,8 @@ const OTManagement = () => {
         loading, error, ots, 
         fetchOTs, addOT, editOT, removeOT 
     } = useAdmin();
+
+    const navigate = useNavigate();
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -47,6 +50,10 @@ const OTManagement = () => {
         if (window.confirm("Are you sure you want to delete this theater?")) {
             await removeOT(id);
         }
+    };
+    
+    const handleViewRooms = (ot) => {
+        navigate(`/ot-room-management?otId=${ot.id}&otName=${encodeURIComponent(ot.name)}`);
     };
 
     const openEditModal = (ot) => {
@@ -147,6 +154,17 @@ const OTManagement = () => {
                                 </td>
                                 <td style={{ padding: "1.25rem 1.5rem", textAlign: "right" }}>
                                     <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                                        <button 
+                                            onClick={() => handleViewRooms(ot)}
+                                            title="View Rooms for this Theater"
+                                            style={{
+                                                padding: "0.5rem 1rem", borderRadius: "0.375rem", border: "1px solid var(--hospital-blue)",
+                                                backgroundColor: "#eff6ff", color: "var(--hospital-blue)", cursor: "pointer",
+                                                fontSize: "0.75rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.4rem"
+                                            }}
+                                        >
+                                            <i className="fa-solid fa-door-open"></i> View Rooms
+                                        </button>
                                         <button 
                                             onClick={() => openEditModal(ot)}
                                             style={{
@@ -258,7 +276,6 @@ const OTManagement = () => {
                 </div>
             )}
 
-            {/* Modal: Edit OT */}
             {isEditModalOpen && (
                 <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
                     <div className="login-card" style={{ maxWidth: "500px" }}>

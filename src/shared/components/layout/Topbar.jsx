@@ -11,6 +11,7 @@ const Topbar = () => {
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState("");
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const navItems = getNavItemsByRole(user?.role);
 
@@ -18,6 +19,14 @@ const Topbar = () => {
         <div className="topbar-wrapper">
             <header className="topbar-main">
                 <div className="topbar-left">
+                    {/* Mobile Menu Toggle */}
+                    <button 
+                        className="topbar-mobile-toggle"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    >
+                        <i className={`fa-solid ${mobileMenuOpen ? 'fa-xmark' : 'fa-bars'}`}></i>
+                    </button>
+
                     {/* Brand */}
                     <div className="topbar-brand" onClick={() => navigate("/")}>
                         <i className="fa-solid fa-heart-pulse mr-2 text-hospital-green"></i>
@@ -41,8 +50,8 @@ const Topbar = () => {
                 </div>
 
                 <div className="topbar-right">
-                    {/* Search Bar */}
-                    <div className="search-container">
+                    {/* Search Bar - Hidden on Mobile naturally via CSS */}
+                    {/* <div className="search-container">
                         <i className="fa-solid fa-magnifying-glass search-icon"></i>
                         <input
                             type="text"
@@ -51,7 +60,7 @@ const Topbar = () => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                    </div>
+                    </div> */}
 
                     {/* Notifications */}
                     <button className="notif-btn">
@@ -68,7 +77,7 @@ const Topbar = () => {
                             <div className="user-avatar">
                                 {user?.email?.charAt(0) || user?.role?.charAt(0) || "U"}
                             </div>
-                            <div className="user-meta">
+                            <div className="user-meta desktop-only">
                                 <p className="user-name">{user?.role?.replace("_", " ")}</p>
                                 <p className="user-status">Online</p>
                             </div>
@@ -95,17 +104,58 @@ const Topbar = () => {
                                 </button>
                             </div>
                         )}
-                        
-                        {/* Overlay to close dropdown */}
-                        {dropdownOpen && (
-                            <div 
-                                style={{ position: 'fixed', inset: 0, zIndex: -1 }} 
-                                onClick={() => setDropdownOpen(false)}
-                            ></div>
-                        )}
                     </div>
                 </div>
             </header>
+
+            {/* Mobile Navigation Sidebar/Drawer */}
+            <div className={`mobile-nav-drawer ${mobileMenuOpen ? 'open' : ''}`}>
+                <div className="mobile-nav-header">
+                    <div className="topbar-brand">
+                        <i className="fa-solid fa-heart-pulse mr-2 text-hospital-green"></i>
+                        <span>OT<span className="brand-sync">Sync</span></span>
+                    </div>
+                    <button onClick={() => setMobileMenuOpen(false)} className="close-mobile-btn">
+                        <i className="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div className="mobile-nav-items">
+                    {navItems.map((item) => (
+                        <button
+                            key={item.path}
+                            className={`mobile-nav-link ${location.pathname === item.path ? "active" : ""}`}
+                            onClick={() => {
+                                navigate(item.path);
+                                setMobileMenuOpen(false);
+                            }}
+                        >
+                            <i className={`${item.icon} mr-3`}></i>
+                            <span>{item.label}</span>
+                        </button>
+                    ))}
+                </div>
+                <div className="mobile-nav-footer">
+                   <button className="dropdown-item logout-item" onClick={handleLogout}>
+                        <i className="fa-solid fa-arrow-right-from-bracket mr-2"></i> Logout
+                    </button>
+                </div>
+            </div>
+
+            {/* Backdrop for Mobile Menu */}
+            {mobileMenuOpen && (
+                <div 
+                    className="mobile-nav-backdrop"
+                    onClick={() => setMobileMenuOpen(false)}
+                ></div>
+            )}
+            
+            {/* Overlay to close profile dropdown */}
+            {dropdownOpen && (
+                <div 
+                    style={{ position: 'fixed', inset: 0, zIndex: 10 }} 
+                    onClick={() => setDropdownOpen(false)}
+                ></div>
+            )}
         </div>
     );
 };

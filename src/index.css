@@ -339,8 +339,6 @@ body {
     flex-grow: 1;
     padding: 1.5rem;
     width: 100%;
-    max-width: 1600px;
-    margin: 0 auto;
 }
 
 /* ─── Login Page Style ─────────────────────────────────────── */
@@ -362,11 +360,110 @@ body {
 }
 
 /* ─── Responsive ─────────────────────────────────────────── */
+/* ─── Mobile Responsiveness & Drawer ─────────────────────── */
 .topbar-mobile-toggle {
     display: none;
+    background: none;
+    border: none;
+    color: var(--hospital-text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-right: 1rem;
+}
+
+.desktop-only {
+    display: block;
+}
+
+.mobile-nav-drawer {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    background-color: white;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-nav-drawer.open {
+    left: 0;
+}
+
+.mobile-nav-header {
+    padding: 1.50rem;
+    border-bottom: 1px solid var(--hospital-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.close-mobile-btn {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--hospital-text-secondary);
+    cursor: pointer;
+}
+
+.mobile-nav-items {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.mobile-nav-link {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0.875rem 1rem;
+    border-radius: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--hospital-text-secondary);
+    font-weight: 500;
+    text-align: left;
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mobile-nav-link:hover {
+    background-color: var(--hospital-bg);
+}
+
+.mobile-nav-link.active {
+    background-color: #eff6ff;
+    color: var(--hospital-blue);
+    font-weight: 700;
+}
+
+.mobile-nav-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--hospital-border);
+}
+
+.mobile-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+    z-index: 999;
 }
 
 @media (max-width: 1024px) {
-    .topbar-nav { display: none; }
+    .topbar-nav, .desktop-only { display: none !important; }
     .topbar-mobile-toggle { display: block; }
+    
+    .topbar-wrapper {
+        padding: 1rem 1rem 0;
+    }
+    
+    .topbar-brand {
+        margin-right: 0;
+        font-size: 1.125rem;
+    }
 }

@@ -2,13 +2,13 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
 
 // allowedRoles = ["SUPER_ADMIN", "ADMIN"] — jo bhi us route ke liye allowed hain
-const RoleGuard = ({ allowedRoles }) => {
+const RoleGuard = ({ allowedRoles, children }) => {
   const { user, isLoading } = useAuthContext();
 
   if (isLoading) return <div>Loading...</div>;
 
   return allowedRoles.includes(user?.role)
-    ? <Outlet />
+    ? (children || <Outlet />)
     : <Navigate to="/unauthorized" replace />;
 };
 

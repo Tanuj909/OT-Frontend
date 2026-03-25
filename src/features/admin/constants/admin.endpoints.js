@@ -1,4 +1,5 @@
 export const ADMIN_ENDPOINTS = {
+    
     // Operation Theater Endpoints
     CREATE_OT: "/admin/operation-theaters",
     GET_OT_ALL: "/admin/operation-theaters",

@@ -4,7 +4,7 @@ import {
     getAllOTsApi, 
     getOTByIdApi, 
     updateOTApi, 
-    deleteOTApi 
+    deleteOTApi
 } from "../service/adminApi";
 
 export const useAdmin = () => {
@@ -89,6 +89,7 @@ export const useAdmin = () => {
             setLoading(false);
         }
     }, []);
+
 
     return {
         loading,
