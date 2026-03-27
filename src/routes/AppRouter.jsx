@@ -23,6 +23,8 @@ import CatalogManagement from "../features/catalog/pages/CatalogManagement";
 import OperationManagement from "../features/operations/pages/OperationManagement";
 import CatalogPricePage from "../features/catalog/pages/CatalogPricePage";
 import WardManagement from "../features/admin/pages/WardManagement";
+import OperationMonitoring from "../features/operations/pages/OperationMonitoring";
+import IpdRequests from "../features/ipd_request/pages/IpdRequests";
 
 // Placeholder component
 const Page = ({ title }) => (
@@ -62,9 +64,10 @@ const AppRouter = () => {
             <Route path="/ot-item-catalog" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><CatalogManagement /></RoleGuard>} />
             <Route path="/ot-price-catalog/:id" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><CatalogPricePage /></RoleGuard>} />
             <Route path="/ot-ward" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><WardManagement /></RoleGuard>} />
+            <Route path="/operation-monitoring/:operationId" element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SURGEON]}><OperationMonitoring /></RoleGuard>} />
 
             {/* SHARED (ADMIN & RECEPTIONIST) Routes */}
-            <Route path="/operation-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.RECEPTIONIST]}><Page title="Surgery Requests" /></RoleGuard>} />
+            <Route path="/operation-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.RECEPTIONIST]}><IpdRequests /></RoleGuard>} />
             
             {/* RECEPTIONIST specific */}
             <Route path="/room-management" element={<RoleGuard allowedRoles={[ROLES.RECEPTIONIST]}><Page title="Room Management" /></RoleGuard>} />

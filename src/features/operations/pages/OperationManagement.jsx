@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOperations } from "../hooks/useOperations";
 import { useAdmin } from "../../admin/hooks/useAdmin";
 import { useOtRoom } from "../../admin/hooks/useOtroom";
@@ -14,44 +15,32 @@ const OperationManagement = () => {
         loading, 
         error, 
         operations, 
-        fetchRequestedOperations, 
-        fetchAllOperations, 
-        fetchOperationsByStatus,
-        scheduleOperation 
+        fetchAllOperations,
+        fetchOperationsByStatus 
     } = useOperations();
+    const navigate = useNavigate();
 
     const { ots, fetchOTs } = useAdmin();
     const { rooms, fetchRoomsByTheater } = useOtRoom();
     const { staffList, fetchAllStaff } = useStaff();
 
-    const [activeTab, setActiveTab] = useState("REQUESTED"); // REQUESTED, ALL, BY_STATUS
+    const [activeTab, setActiveTab] = useState("SCHEDULED"); // SCHEDULED, IN_PROGRESS, ALL, BY_STATUS
     const [selectedStatus, setSelectedStatus] = useState("IN_PROGRESS");
     const [searchTerm, setSearchTerm] = useState("");
 
-    // Scheduling Modal State
-    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-    const [schedulingOp, setSchedulingOp] = useState(null);
-    const [selectedTheaterId, setSelectedTheaterId] = useState("");
-    
-    const [scheduleForm, setScheduleForm] = useState({
-        roomId: "",
-        surgeonId: "",
-        surgeonName: "",
-        anesthesiologistId: "",
-        anesthesiologistName: "",
-        startTime: "",
-        endTime: ""
-    });
+
 
     const loadData = useCallback(() => {
-        if (activeTab === "REQUESTED") {
-            fetchRequestedOperations();
-        } else if (activeTab === "ALL") {
+        if (activeTab === "ALL") {
             fetchAllOperations();
+        } else if (activeTab === "SCHEDULED") {
+            fetchOperationsByStatus("SCHEDULED");
+        } else if (activeTab === "IN_PROGRESS") {
+            fetchOperationsByStatus("IN_PROGRESS");
         } else {
             fetchOperationsByStatus(selectedStatus);
         }
-    }, [activeTab, selectedStatus, fetchRequestedOperations, fetchAllOperations, fetchOperationsByStatus]);
+    }, [activeTab, selectedStatus, fetchAllOperations, fetchOperationsByStatus]);
 
     useEffect(() => {
         loadData();
@@ -59,37 +48,7 @@ const OperationManagement = () => {
         fetchAllStaff();
     }, [loadData, fetchOTs, fetchAllStaff]);
 
-    // Handle Theater selection change
-    const handleTheaterChange = (e) => {
-        const theaterId = e.target.value;
-        setSelectedTheaterId(theaterId);
-        if (theaterId) {
-            fetchRoomsByTheater(theaterId);
-        }
-    };
 
-    const handleOpenSchedule = (op) => {
-        setSchedulingOp(op);
-        setScheduleForm({
-            ...scheduleForm,
-            startTime: op.startTime?.substring(0, 16) || "",
-            endTime: op.endTime?.substring(0, 16) || ""
-        });
-        setIsScheduleModalOpen(true);
-    };
-
-    const handleScheduleSubmit = async (e) => {
-        e.preventDefault();
-        const res = await scheduleOperation(schedulingOp.operationId, scheduleForm);
-        if (res.success) {
-            alert("Surgery Scheduled Successfully");
-            setIsScheduleModalOpen(false);
-            setSelectedTheaterId("");
-            loadData();
-        } else {
-            alert(res.message || "Scheduling failed.");
-        }
-    };
 
     const getStatusStyle = (status) => {
         switch(status) {
@@ -123,24 +82,37 @@ const OperationManagement = () => {
             </div>
 
             {/* Tab Navigation */}
-            <div style={{ display: "flex", gap: "1rem", borderBottom: "1px solid #e2e8f0", marginBottom: "1.5rem" }}>
+            <div style={{ display: "flex", gap: "1rem", borderBottom: "1px solid #e2e8f0", marginBottom: "1.5rem", overflowX: "auto", paddingBottom: "2px" }}>
+
                 <button 
-                    onClick={() => setActiveTab("REQUESTED")}
+                    onClick={() => setActiveTab("SCHEDULED")}
                     style={{ 
                         padding: "0.75rem 1.5rem", border: "none", background: "none", cursor: "pointer",
-                        fontWeight: "700", fontSize: "0.875rem", 
-                        color: activeTab === "REQUESTED" ? "var(--hospital-blue)" : "#64748b",
-                        borderBottom: activeTab === "REQUESTED" ? "2px solid var(--hospital-blue)" : "none",
+                        fontWeight: "700", fontSize: "0.875rem", whiteSpace: "nowrap",
+                        color: activeTab === "SCHEDULED" ? "var(--hospital-blue)" : "#64748b",
+                        borderBottom: activeTab === "SCHEDULED" ? "2px solid var(--hospital-blue)" : "none",
                         transition: "all 0.2s"
                     }}
                 >
-                    <i className="fa-solid fa-inbox"></i> Surgery Requests
+                    <i className="fa-regular fa-calendar-check"></i> Scheduled
+                </button>
+                <button 
+                    onClick={() => setActiveTab("IN_PROGRESS")}
+                    style={{ 
+                        padding: "0.75rem 1.5rem", border: "none", background: "none", cursor: "pointer",
+                        fontWeight: "700", fontSize: "0.875rem", whiteSpace: "nowrap",
+                        color: activeTab === "IN_PROGRESS" ? "var(--hospital-blue)" : "#64748b",
+                        borderBottom: activeTab === "IN_PROGRESS" ? "2px solid var(--hospital-blue)" : "none",
+                        transition: "all 0.2s"
+                    }}
+                >
+                    <i className="fa-solid fa-spinner"></i> In Progress
                 </button>
                 <button 
                     onClick={() => setActiveTab("ALL")}
                     style={{ 
                         padding: "0.75rem 1.5rem", border: "none", background: "none", cursor: "pointer",
-                        fontWeight: "700", fontSize: "0.875rem", 
+                        fontWeight: "700", fontSize: "0.875rem", whiteSpace: "nowrap",
                         color: activeTab === "ALL" ? "var(--hospital-blue)" : "#64748b",
                         borderBottom: activeTab === "ALL" ? "2px solid var(--hospital-blue)" : "none",
                         transition: "all 0.2s"
@@ -152,7 +124,7 @@ const OperationManagement = () => {
                     onClick={() => setActiveTab("BY_STATUS")}
                     style={{ 
                         padding: "0.75rem 1.5rem", border: "none", background: "none", cursor: "pointer",
-                        fontWeight: "700", fontSize: "0.875rem", 
+                        fontWeight: "700", fontSize: "0.875rem", whiteSpace: "nowrap",
                         color: activeTab === "BY_STATUS" ? "var(--hospital-blue)" : "#64748b",
                         borderBottom: activeTab === "BY_STATUS" ? "2px solid var(--hospital-blue)" : "none",
                         transition: "all 0.2s"
@@ -251,16 +223,17 @@ const OperationManagement = () => {
                                             </td>
                                             <td style={{ padding: "1.25rem 1.5rem", textAlign: "right" }}>
                                                 <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-                                                    {op.status === "REQUESTED" && (
-                                                        <button 
-                                                            onClick={() => handleOpenSchedule(op)}
-                                                            style={{ padding: "0.4rem 0.8rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700" }}
-                                                        >
-                                                            <i className="fa-solid fa-calendar-check"></i> Schedule
-                                                        </button>
-                                                    )}
-                                                    <button style={{ padding: "0.4rem 0.8rem", backgroundColor: "#fff", border: "1px solid #cbd5e1", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700" }}>
-                                                        View File
+
+                                                    <button 
+                                                        onClick={() => navigate(`/operation-monitoring/${op.operationId}`)}
+                                                        style={{ 
+                                                            padding: "0.4rem 0.8rem", 
+                                                            backgroundColor: (op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? "#2563eb" : "#fff", 
+                                                            color: (op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? "white" : "#0f172a",
+                                                            border: "1px solid #cbd5e1", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700" 
+                                                        }}
+                                                    >
+                                                        {(op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? <><i className="fa-solid fa-desktop"></i> Monitor</> : "View Details"}
                                                     </button>
                                                 </div>
                                             </td>
@@ -280,127 +253,7 @@ const OperationManagement = () => {
                 </div>
             )}
 
-            {/* Scheduling Modal */}
-            {isScheduleModalOpen && (
-                <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1rem" }}>
-                    <form onSubmit={handleScheduleSubmit} className="login-card" style={{ maxWidth: "650px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.5)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                            <div>
-                                <h2 style={{ fontSize: "1.25rem", fontWeight: "800" }}>Finalize Surgery Schedule</h2>
-                                <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Registering theater and clinical staff for {schedulingOp?.patientName}</p>
-                            </div>
-                            <button type="button" onClick={() => { setIsScheduleModalOpen(false); setSelectedTheaterId(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.5rem" }}>
-                                <i className="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-                            {/* Theater & Room */}
-                            <div style={{ gridColumn: selectedTheaterId ? "span 1" : "span 2" }}>
-                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>ASSIGNED THEATER</label>
-                                <select 
-                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
-                                    required 
-                                    value={selectedTheaterId} 
-                                    onChange={handleTheaterChange}
-                                >
-                                    <option value="">Select Theater Block</option>
-                                    {ots.map(ot => <option key={ot.id} value={ot.id}>{ot.name}</option>)}
-                                </select>
-                            </div>
-
-                            {selectedTheaterId && (
-                                <div style={{ gridColumn: "span 1" }}>
-                                    <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>SPECIFIC OT ROOM</label>
-                                    <select 
-                                        style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
-                                        required
-                                        value={scheduleForm.roomId}
-                                        onChange={e => setScheduleForm({...scheduleForm, roomId: e.target.value})}
-                                    >
-                                        <option value="">Select Room</option>
-                                        {rooms.map(room => <option key={room.id} value={room.id}>{room.roomName} - {room.roomNumber}</option>)}
-                                    </select>
-                                </div>
-                            )}
-
-                            {/* Surgeon */}
-                            <div style={{ gridColumn: "span 2" }}>
-                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PRIMARY SURGEON</label>
-                                <select 
-                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
-                                    required
-                                    value={scheduleForm.surgeonId}
-                                    onChange={e => {
-                                        const s = staffList.find(x => x.id === parseInt(e.target.value));
-                                        setScheduleForm({...scheduleForm, surgeonId: e.target.value, surgeonName: s?.name || ""});
-                                    }}
-                                >
-                                    <option value="">Select Surgeon</option>
-                                    {staffList.filter(s => s.role === "SURGEON" || s.role === "DOCTOR").map(s => (
-                                        <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Anesthesiologist */}
-                            <div style={{ gridColumn: "span 2" }}>
-                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>ANESTHESIOLOGIST</label>
-                                <select 
-                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
-                                    required
-                                    value={scheduleForm.anesthesiologistId}
-                                    onChange={e => {
-                                        const s = staffList.find(x => x.id === parseInt(e.target.value));
-                                        setScheduleForm({...scheduleForm, anesthesiologistId: e.target.value, anesthesiologistName: s?.name || ""});
-                                    }}
-                                >
-                                    <option value="">Select Specialist</option>
-                                    {staffList.filter(s => s.role === "ANESTHESIOLOGIST" || s.role === "DOCTOR").map(s => (
-                                        <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Timings */}
-                            <div style={{ gridColumn: "span 1" }}>
-                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PROCEDURE START</label>
-                                <input 
-                                    type="datetime-local" 
-                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "600" }} 
-                                    required
-                                    value={scheduleForm.startTime}
-                                    onChange={e => setScheduleForm({...scheduleForm, startTime: e.target.value})}
-                                />
-                            </div>
-
-                            <div style={{ gridColumn: "span 1" }}>
-                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>ESTIMATED END</label>
-                                <input 
-                                    type="datetime-local" 
-                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "600" }} 
-                                    required
-                                    value={scheduleForm.endTime}
-                                    onChange={e => setScheduleForm({...scheduleForm, endTime: e.target.value})}
-                                />
-                            </div>
-
-                            <div style={{ gridColumn: "span 2", marginTop: "1rem" }}>
-                                <button 
-                                    type="submit" 
-                                    style={{ 
-                                        width: "100%", padding: "1rem", backgroundColor: "var(--hospital-blue)", color: "white", 
-                                        border: "none", borderRadius: "8px", fontWeight: "800", cursor: "pointer",
-                                        textTransform: "uppercase", letterSpacing: "1px"
-                                    }}
-                                >
-                                    Authorize Surgical Booking
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            )}
         </div>
     );
 };

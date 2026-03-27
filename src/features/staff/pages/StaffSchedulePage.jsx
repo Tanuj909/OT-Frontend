@@ -57,7 +57,7 @@ const StaffSchedulePage = () => {
     const openModal = (mode, item = null) => {
         setModalMode(mode);
         if (mode === "EDIT" && item) {
-            setEditId(item.scheduleId);
+            setEditId(item.id);
             setFormData({
                 days: [],
                 dayOfWeek: item.dayOfWeek,

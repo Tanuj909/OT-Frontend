@@ -40,10 +40,11 @@ const CatalogPricePage = () => {
             const resByItem = await fetchPriceByCatalogItemId(id);
             if (!resByItem.success) {
                 setIsNotFound(true);
-                setIsModalOpen(true); // Automatically open modal to "match" the request to show form
+                // Only auto-open modal if item exists but price doesn't
                 const resItem = await fetchItemById(id);
                 if (resItem.success) {
                     setCatalogItem(resItem.data);
+                    setIsModalOpen(true);
                 }
             }
         }
@@ -100,42 +101,53 @@ const CatalogPricePage = () => {
     };
 
     if (priceLoading && !selectedPrice && !catalogItem && !isNotFound) {
-        return <div style={{ padding: "4rem", textAlign: "center", color: "#64748b" }}>Auditing financial records...</div>;
+        return (
+            <div style={{ height: "80vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: "1rem" }}>
+                <div style={{ width: "40px", height: "40px", border: "3px solid #f1f5f9", borderTopColor: "var(--hospital-blue)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+                <p style={{ color: "#64748b", fontWeight: "600", fontSize: "0.875rem" }}>Auditing financial records...</p>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
     }
 
     const itemTitle = selectedPrice?.itemName || catalogItem?.itemName || "Item Details";
     const itemCode = selectedPrice?.itemCode || catalogItem?.itemCode || "N/A";
-    const itemType = selectedPrice?.itemType || catalogItem?.itemType || "CLINICAL";
 
     return (
-        <div style={{ padding: "1.5rem" }}>
-            {/* Header section - Matched with CatalogManagement */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+        <div style={{ padding: "1.5rem", maxWidth: "1200px", margin: "0 auto" }}>
+            {/* Header section */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem", gap: "1rem" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: "700", color: "var(--hospital-text-primary)" }}>
-                        {isNotFound ? "Uninitialized Pricing Strategy" : "Financial Specifications"}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                         <span style={{ fontSize: "0.7rem", fontWeight: "900", color: "var(--hospital-blue)", backgroundColor: "#eff6ff", padding: "0.2rem 0.6rem", borderRadius: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Catalog Price Feed</span>
+                         <span style={{ color: "#94a3b8", fontSize: "0.7rem" }}>ID: #{id}</span>
+                    </div>
+                    <h1 style={{ fontSize: "2rem", fontWeight: "900", color: "#0f172a", lineHeight: "1.1", marginBottom: "0.5rem" }}>
+                        {itemTitle}
                     </h1>
-                    <p style={{ color: "var(--hospital-text-secondary)", fontSize: "0.875rem" }}>
-                        {itemTitle} ({itemCode}) — Clinical ID: #{id}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#64748b", fontSize: "0.875rem", fontWeight: "600" }}>
+                            <i className="fa-solid fa-barcode"></i> {itemCode}
+                        </div>
+                        <div style={{ width: "4px", height: "4px", backgroundColor: "#cbd5e1", borderRadius: "50%" }}></div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#64748b", fontSize: "0.875rem", fontWeight: "600" }}>
+                            <i className="fa-solid fa-tag"></i> {isNotFound ? "Uninitialized" : "Price Confirmed"}
+                        </div>
+                    </div>
                 </div>
                 <div style={{ display: "flex", gap: "0.75rem" }}>
                     <button 
                         onClick={() => navigate("/ot-item-catalog")}
-                        style={{ padding: "0.75rem 1.2rem", backgroundColor: "#fff", border: "1px solid #cbd5e1", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "0.875rem", color: "#64748b" }}
+                        style={{ padding: "0.75rem 1.25rem", backgroundColor: "white", border: "1.5px solid #e2e8f0", borderRadius: "12px", fontWeight: "700", cursor: "pointer", fontSize: "0.875rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.5rem", transition: "all 0.2s" }}
                     >
-                        <i className="fa-solid fa-arrow-left"></i> Exit
+                        <i className="fa-solid fa-arrow-left"></i> Back to Catalog
                     </button>
                     {!isNotFound && (
                         <button 
                             onClick={() => setIsModalOpen(true)}
-                            style={{
-                                padding: "0.75rem 1.5rem", backgroundColor: "var(--hospital-blue)", color: "white", 
-                                border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer",
-                                display: "flex", alignItems: "center", gap: "0.5rem"
-                            }}
+                            style={{ padding: "0.75rem 1.5rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "12px", fontWeight: "800", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem", boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)" }}
                         >
-                            <i className="fa-solid fa-pen-to-square"></i> Update Rate
+                            <i className="fa-solid fa-pen-to-square"></i> Modify Rates
                         </button>
                     )}
                 </div>
@@ -143,147 +155,196 @@ const CatalogPricePage = () => {
 
             {/* Content Section */}
             {!isNotFound && selectedPrice ? (
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem" }}>
-                    {/* Detailed Data Table container - styled like CatalogManagement repository */}
-                    <div className="login-card" style={{ padding: 0, border: "1px solid var(--hospital-border)", boxShadow: "none", maxWidth: "none" }}>
-                        <div style={{ padding: "1.25rem", borderBottom: "1px solid var(--hospital-border)", backgroundColor: "#f8fafc" }}>
-                            <h3 style={{ fontSize: "1rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <i className="fa-solid fa-file-invoice-dollar text-hospital-blue"></i> Rate Analysis
+                <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "2rem" }}>
+                    {/* Financial Summary Card */}
+                    <div style={{ backgroundColor: "white", borderRadius: "24px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                        <div style={{ padding: "1.75rem", borderBottom: "1px solid #f1f5f9", background: "linear-gradient(to right, #f8fafc, white)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <h3 style={{ fontSize: "1.1rem", fontWeight: "800", display: "flex", alignItems: "center", gap: "0.75rem", color: "#1e293b" }}>
+                                <i className="fa-solid fa-file-invoice-dollar" style={{ color: "var(--hospital-blue)" }}></i> Pricing Breakdown
                             </h3>
+                            <div style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", backgroundColor: "#f1f5f9", padding: "0.3rem 0.75rem", borderRadius: "6px" }}>
+                                HSN: {selectedPrice.hsnCode}
+                            </div>
                         </div>
-                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                            <tbody>
-                                <tr style={{ borderBottom: "1px solid var(--hospital-border)" }}>
-                                    <th style={{ padding: "1.25rem", color: "#64748b", fontWeight: "600", fontSize: "0.875rem", width: "40%" }}>HSN CLASSIFICATION</th>
-                                    <td style={{ padding: "1.25rem", fontWeight: "700" }}>{selectedPrice.hsnCode}</td>
-                                </tr>
-                                <tr style={{ borderBottom: "1px solid var(--hospital-border)" }}>
-                                    <th style={{ padding: "1.25rem", color: "#64748b", fontWeight: "600", fontSize: "0.875rem" }}>BASE PROCUREMENT COST</th>
-                                    <td style={{ padding: "1.25rem", fontWeight: "700" }}>₹{selectedPrice.basePrice?.toLocaleString()}</td>
-                                </tr>
-                                <tr style={{ borderBottom: "1px solid var(--hospital-border)" }}>
-                                    <th style={{ padding: "1.25rem", color: "#64748b", fontWeight: "600", fontSize: "0.875rem" }}>HOSPITAL DISCOUNT ({selectedPrice.discountPercent}%)</th>
-                                    <td style={{ padding: "1.25rem", fontWeight: "700", color: "#dc2626" }}>- ₹{selectedPrice.discountAmount?.toLocaleString()}</td>
-                                </tr>
-                                <tr style={{ borderBottom: "1px solid var(--hospital-border)" }}>
-                                    <th style={{ padding: "1.25rem", color: "#64748b", fontWeight: "600", fontSize: "0.875rem" }}>SUBTOTAL (PRE-TAX)</th>
-                                    <td style={{ padding: "1.25rem", fontWeight: "700" }}>₹{selectedPrice.priceAfterDiscount?.toLocaleString()}</td>
-                                </tr>
-                                <tr style={{ borderBottom: "1px solid var(--hospital-border)" }}>
-                                    <th style={{ padding: "1.25rem", color: "#64748b", fontWeight: "600", fontSize: "0.875rem" }}>GST TAXATION ({selectedPrice.gstPercent}%)</th>
-                                    <td style={{ padding: "1.25rem", fontWeight: "700", color: "#16a34a" }}>+ ₹{selectedPrice.gstAmount?.toLocaleString()}</td>
-                                </tr>
-                                <tr style={{ backgroundColor: "#f0f9ff" }}>
-                                    <th style={{ padding: "1.5rem 1.25rem", color: "var(--hospital-blue)", fontWeight: "800", fontSize: "1rem" }}>NET BILLABLE AMOUNT</th>
-                                    <td style={{ padding: "1.5rem 1.25rem", fontWeight: "900", fontSize: "1.5rem", color: "var(--hospital-blue)" }}>₹{selectedPrice.totalPrice?.toLocaleString()}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
 
-                    {/* Metadata column */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                        <div className="login-card" style={{ padding: "1.5rem", border: "1px solid var(--hospital-border)" }}>
-                            <h4 style={{ fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "1rem", textTransform: "uppercase" }}>System Audit</h4>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                                <div>
-                                    <p style={{ fontSize: "0.7rem", color: "#94a3b8" }}>STATUS</p>
-                                    <span style={{ 
-                                        fontSize: "0.75rem", fontWeight: "800", 
-                                        color: selectedPrice.isActive ? "#10b981" : "#ef4444",
-                                        backgroundColor: selectedPrice.isActive ? "#f0fdf4" : "#fef2f2",
-                                        padding: "0.2rem 0.5rem", borderRadius: "4px", display: "inline-block", marginTop: "0.25rem"
-                                    }}>
-                                        {selectedPrice.isActive ? "ACTIVE" : "INACTIVE"}
-                                    </span>
+                        <div style={{ padding: "1.75rem" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ color: "#64748b", fontWeight: "600", fontSize: "0.95rem" }}>Base Procurement Cost</span>
+                                    <span style={{ fontWeight: "700", fontSize: "1.1rem", color: "#334155" }}>₹ {selectedPrice.basePrice?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <button 
-                                    onClick={handleStatusToggle}
-                                    style={{ 
-                                        width: "100%", padding: "0.6rem", fontSize: "0.875rem", fontWeight: "700",
-                                        backgroundColor: selectedPrice.isActive ? "#fef2f2" : "#f0fdf4",
-                                        color: selectedPrice.isActive ? "#ef4444" : "#16a34a",
-                                        border: "1px solid currentColor", borderRadius: "6px", cursor: "pointer"
-                                    }}
-                                >
-                                    {selectedPrice.isActive ? "Disable Trading" : "Enable Trading"}
-                                </button>
-                                <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "1rem", marginTop: "0.5rem" }}>
-                                    <p style={{ fontSize: "0.7rem", color: "#94a3b8" }}>ITEM REGISTRY TYPE</p>
-                                    <p style={{ fontWeight: "700", color: "var(--hospital-text-primary)" }}>{selectedPrice.itemType}</p>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ color: "#64748b", fontWeight: "600", fontSize: "0.95rem" }}>Hospital Discount ({selectedPrice.discountPercent}%)</span>
+                                    <span style={{ fontWeight: "700", fontSize: "1.1rem", color: "#ef4444" }}>- ₹ {selectedPrice.discountAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ height: "1px", backgroundColor: "#f1f5f9", margin: "0.5rem 0" }}></div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ color: "#64748b", fontWeight: "600", fontSize: "0.95rem" }}>Subtotal (Pre-Tax)</span>
+                                    <span style={{ fontWeight: "700", fontSize: "1.1rem", color: "#334155" }}>₹ {selectedPrice.priceAfterDiscount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ color: "#64748b", fontWeight: "600", fontSize: "0.95rem" }}>GST Taxation ({selectedPrice.gstPercent}%)</span>
+                                    <span style={{ fontWeight: "700", fontSize: "1.1rem", color: "#10b981" }}>+ ₹ {selectedPrice.gstAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="login-card" style={{ padding: "1.5rem", border: "1px solid var(--hospital-border)", backgroundColor: "#f8fafc" }}>
-                             <p style={{ fontSize: "0.7rem", color: "#94a3b8" }}>AUTHORIZED INITIALIZATION</p>
-                             <p style={{ fontWeight: "700", fontSize: "0.875rem" }}>{selectedPrice.createdBy}</p>
-                             <p style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "1rem" }}>LAST SYSTEM VERIFICATION</p>
-                             <p style={{ fontWeight: "600", fontSize: "0.8125rem" }}>
-                                 {new Date(selectedPrice.updatedAt || selectedPrice.createdAt).toLocaleDateString()}
-                             </p>
+                        <div style={{ padding: "2rem 1.75rem", backgroundColor: "#f0f9ff", borderTop: "2px dashed #bae6fd", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                                <p style={{ fontSize: "0.75rem", fontWeight: "800", color: "#0369a1", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "0.25rem" }}>Total Billable Amount</p>
+                                <p style={{ fontSize: "0.875rem", color: "#0c4a6e", fontWeight: "600" }}>Final rate calculated for billing cycles</p>
+                            </div>
+                            <div style={{ textAlign: "right", backgroundColor: "white", padding: "0.75rem 1.5rem", borderRadius: "30px", border: "2px solid #bae6fd" }}>
+                                <span style={{ fontSize: "1.5rem", fontWeight: "900", color: "var(--hospital-blue)", letterSpacing: "-1px" }}>₹ {selectedPrice.totalPrice?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Secondary Metrics */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                        {/* Status Card */}
+                        <div style={{ backgroundColor: "white", borderRadius: "24px", border: "1px solid #e2e8f0", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                                <h4 style={{ fontSize: "0.8rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase", letterSpacing: "1px" }}>Clinical Status</h4>
+                                <span style={{ 
+                                    fontSize: "0.7rem", fontWeight: "900", 
+                                    color: selectedPrice.isActive ? "#16a34a" : "#dc2626",
+                                    backgroundColor: selectedPrice.isActive ? "#f0fdf4" : "#fef2f2",
+                                    padding: "0.3rem 0.75rem", borderRadius: "20px", border: `1px solid ${selectedPrice.isActive ? "#bcf0da" : "#fecaca"}`
+                                }}>
+                                    {selectedPrice.isActive ? "ACTIVE" : "INACTIVE"}
+                                </span>
+                            </div>
+                            
+                            <p style={{ fontSize: "0.875rem", color: "#64748b", marginBottom: "1.5rem", fontWeight: "500" }}>
+                                Items marked as inactive will be restricted from new surgical billing cycles and intra-op consumption logs.
+                            </p>
+
+                            <button 
+                                onClick={handleStatusToggle}
+                                style={{ 
+                                    width: "100%", padding: "0.8rem", fontSize: "0.875rem", fontWeight: "800",
+                                    backgroundColor: selectedPrice.isActive ? "#fef2f2" : "#f0fdf4",
+                                    color: selectedPrice.isActive ? "#dc2626" : "#16a34a",
+                                    border: "none", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s",
+                                    display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem"
+                                }}
+                            >
+                                <i className={`fa-solid ${selectedPrice.isActive ? 'fa-ban' : 'fa-circle-check'}`}></i>
+                                {selectedPrice.isActive ? "Deactivate Pricing" : "Re-activate Pricing"}
+                            </button>
+                        </div>
+
+                        {/* Audit Details */}
+                        <div style={{ backgroundColor: "#f8fafc", borderRadius: "24px", border: "1px solid #e2e8f0", padding: "1.5rem" }}>
+                             <div style={{ marginBottom: "1.25rem" }}>
+                                 <p style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.5rem" }}>Initialization Authority</p>
+                                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                     <div style={{ width: "32px", height: "32px", backgroundColor: "#e2e8f0", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", color: "#64748b", fontSize: "0.75rem" }}>
+                                         {selectedPrice.createdBy?.charAt(0).toUpperCase() || "S"}
+                                     </div>
+                                     <span style={{ fontWeight: "700", color: "#334155", fontSize: "0.95rem" }}>{selectedPrice.createdBy || "System Admin"}</span>
+                                 </div>
+                             </div>
+                             <div>
+                                 <p style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.5rem" }}>Last Verified</p>
+                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#334155", fontWeight: "700" }}>
+                                     <i className="fa-regular fa-calendar-check" style={{ color: "var(--hospital-blue)" }}></i>
+                                     {new Date(selectedPrice.updatedAt || selectedPrice.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                 </div>
+                             </div>
                         </div>
                     </div>
                 </div>
             ) : isNotFound && (
-                <div style={{ textAlign: "center", padding: "5rem", backgroundColor: "white", borderRadius: "12px", border: "1px solid var(--hospital-border)" }}>
-                    <div style={{ fontSize: "3rem", color: "#cbd5e1", marginBottom: "1.5rem" }}>
+                <div style={{ textAlign: "center", padding: "6rem 2rem", backgroundColor: "white", borderRadius: "32px", border: "2px dashed #e2e8f0", marginTop: "1rem" }}>
+                    <div style={{ width: "80px", height: "80px", backgroundColor: "#f8fafc", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", color: "#cbd5e1", fontSize: "2rem" }}>
                         <i className="fa-solid fa-file-invoice-dollar"></i>
                     </div>
-                    <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#334155" }}>Pricing Record Not Initialized</h3>
-                    <p style={{ color: "#64748b", maxWidth: "400px", margin: "1rem auto" }}>
-                        No financial specifications found for this clinical item. Access the registration form to define base rates and taxation.
+                    <h3 style={{ fontSize: "1.5rem", fontWeight: "900", color: "#1e293b", marginBottom: "0.75rem" }}>Financial Profile Pending</h3>
+                    <p style={{ color: "#64748b", maxWidth: "450px", margin: "0 auto 2rem", fontWeight: "500", lineHeight: "1.6" }}>
+                        No pricing strategy has been defined for this clinical item. Please initialize the pricing record to enable inventory tracking and surgical billing.
                     </p>
                     <button 
                         onClick={() => setIsModalOpen(true)}
-                        style={{ padding: "0.75rem 2rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}
+                        style={{ padding: "1rem 2.5rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "14px", fontWeight: "800", cursor: "pointer", fontSize: "1rem", boxShadow: "0 10px 15px -3px rgba(37, 99, 235, 0.3)" }}
                     >
                         Initialize Item Pricing
                     </button>
                 </div>
             )}
 
-            {/* Modal Form - Perfect match with CatalogManagement UX */}
+            {/* Premium Modal Form */}
             {isModalOpen && (
-                <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1rem" }}>
-                    <form onSubmit={handleSave} className="login-card" style={{ maxWidth: "600px", width: "100%", boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                            <h2 style={{ fontSize: "1.25rem", fontWeight: "800" }}>
-                                {isNotFound ? "Initialize Pricing Record" : "Update Financial Specs"}
-                            </h2>
-                            <button type="button" onClick={() => setIsModalOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.5rem" }}>
+                <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1rem" }}>
+                    <form 
+                        onSubmit={handleSave} 
+                        style={{ backgroundColor: "white", maxWidth: "600px", width: "100%", borderRadius: "28px", padding: "2rem", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)", position: "relative", overflow: "hidden" }}
+                    >
+                        {/* Modal Accent */}
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "6px", background: "linear-gradient(to right, var(--hospital-blue), #60a5fa)" }}></div>
+                        
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem" }}>
+                            <div>
+                                <h2 style={{ fontSize: "1.5rem", fontWeight: "900", color: "#0f172a", marginBottom: "0.25rem" }}>
+                                    {isNotFound ? "Initialize Record" : "Update Specifications"}
+                                </h2>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b", fontWeight: "500" }}>Configure financial attributes for surgical items</p>
+                            </div>
+                            <button type="button" onClick={() => setIsModalOpen(false)} style={{ width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f1f5f9", border: "none", borderRadius: "50%", cursor: "pointer", fontSize: "1.2rem", color: "#475569", transition: "all 0.2s" }}>
                                 <i className="fa-solid fa-xmark"></i>
                             </button>
                         </div>
                         
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
                             <div style={{ gridColumn: "span 2" }}>
-                                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", marginBottom: "0.4rem" }}>HSN CLASSIFICATION CODE</label>
-                                <input style={{ width: "100%", padding: "0.7rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} required value={formData.hsnCode} onChange={e => setFormData({...formData, hsnCode: e.target.value})} placeholder="e.g. HSN1234" />
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.5rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>HSN Classification Code</label>
+                                <div style={{ position: "relative" }}>
+                                    <i className="fa-solid fa-hashtag" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }}></i>
+                                    <input style={{ width: "100%", padding: "0.85rem 1rem 0.85rem 2.5rem", border: "2px solid #f1f5f9", borderRadius: "12px", fontWeight: "700", fontSize: "1rem" }} required value={formData.hsnCode} onChange={e => setFormData({...formData, hsnCode: e.target.value.toUpperCase()})} placeholder="HSN-8421" />
+                                </div>
                             </div>
+                            
                             <div>
-                                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", marginBottom: "0.4rem" }}>BASE PROCUREMENT PRICE (₹)</label>
-                                <input type="number" step="0.01" style={{ width: "100%", padding: "0.7rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} required value={formData.basePrice} onChange={e => setFormData({...formData, basePrice: e.target.value})} />
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.5rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Base Price (₹)</label>
+                                <div style={{ position: "relative" }}>
+                                    <span style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontWeight: "800" }}>₹</span>
+                                    <input type="number" step="0.01" style={{ width: "100%", padding: "0.85rem 1rem 0.85rem 2.3rem", border: "2px solid #f1f5f9", borderRadius: "12px", fontWeight: "700", fontSize: "1rem" }} required value={formData.basePrice} onChange={e => setFormData({...formData, basePrice: e.target.value})} />
+                                </div>
                             </div>
+
                             <div>
-                                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", marginBottom: "0.4rem" }}>HOSPITAL DISCOUNT (%)</label>
-                                <input type="number" step="0.1" style={{ width: "100%", padding: "0.7rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} required value={formData.discountPercent} onChange={e => setFormData({...formData, discountPercent: e.target.value})} />
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.5rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Discount (%)</label>
+                                <div style={{ position: "relative" }}>
+                                    <i className="fa-solid fa-percent" style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.75rem" }}></i>
+                                    <input type="number" step="0.1" style={{ width: "100%", padding: "0.85rem 2.3rem 0.85rem 1rem", border: "2px solid #f1f5f9", borderRadius: "12px", fontWeight: "700", fontSize: "1rem" }} required value={formData.discountPercent} onChange={e => setFormData({...formData, discountPercent: e.target.value})} />
+                                </div>
                             </div>
-                            <div>
-                                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: "700", marginBottom: "0.4rem" }}>GST TAXATION (%)</label>
-                                <select style={{ width: "100%", padding: "0.7rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} value={formData.gstPercent} onChange={e => setFormData({...formData, gstPercent: e.target.value})}>
-                                    {[0, 5, 12, 18, 28].map(rate => <option key={rate} value={rate}>{rate}% GST</option>)}
-                                </select>
-                            </div>
-                            <div style={{ alignSelf: "flex-end" }}>
-                                <div style={{ border: "1px dashed #cbd5e1", borderRadius: "6px", height: "40px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", color: "#64748b" }}>
-                                    System calculated values
+
+                            <div style={{ gridColumn: "span 2" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.5rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>GST Taxation Level</label>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.5rem" }}>
+                                    {[0, 5, 12, 18, 28].map(rate => (
+                                        <div 
+                                            key={rate} 
+                                            onClick={() => setFormData({...formData, gstPercent: rate})}
+                                            style={{ 
+                                                padding: "0.75rem 0.5rem", textAlign: "center", borderRadius: "10px", cursor: "pointer", fontWeight: "800", fontSize: "0.9rem",
+                                                backgroundColor: formData.gstPercent == rate ? "var(--hospital-blue)" : "#f8fafc",
+                                                color: formData.gstPercent == rate ? "white" : "#475569",
+                                                border: formData.gstPercent == rate ? "none" : "2px solid #f1f5f9",
+                                                transition: "all 0.2s"
+                                            }}
+                                        >
+                                            {rate}%
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                             
                             <div style={{ gridColumn: "span 2", marginTop: "1rem" }}>
-                                <button type="submit" style={{ width: "100%", padding: "0.8rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "6px", fontWeight: "700", cursor: "pointer" }}>
-                                    {isNotFound ? "Register Pricing Specs" : "Save Updated Specs"}
+                                <button type="submit" style={{ width: "100%", padding: "1.1rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "16px", fontWeight: "900", cursor: "pointer", fontSize: "1rem", textTransform: "uppercase", letterSpacing: "1px", boxShadow: "0 15px 30px -5px rgba(37, 99, 235, 0.4)" }}>
+                                    {isNotFound ? "Confirm & Register Specs" : "Update Financial Records"}
                                 </button>
                             </div>
                         </div>
