@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useOtRoom } from "../hooks/useOtroom";
 import { useOtFeature } from "../hooks/useOtFeature";
+import { useOtRoomPricing } from "../hooks/useOtRoomPricing";
 
 const OtRoom = () => {
     const { id } = useParams();
@@ -22,24 +23,51 @@ const OtRoom = () => {
         unmapFromRoom
     } = useOtFeature();
 
+    const {
+        loading: pricingLoading,
+        pricing,
+        fetchPricing,
+        addPricing,
+        updatePricing
+    } = useOtRoomPricing();
+
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({});
     const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
     const [selectedFeatureIds, setSelectedFeatureIds] = useState([]);
+    const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+    const [pricingFormData, setPricingFormData] = useState({
+        basePrice: 0,
+        hourlyRate: 0,
+        emergencyCharge: 0,
+        cleaningCharge: 0
+    });
 
     useEffect(() => {
         if (id) {
             fetchRoomById(id);
             fetchRoomFeatures(id);
             fetchActiveFeatures();
+            fetchPricing(id);
         }
-    }, [id, fetchRoomById, fetchRoomFeatures, fetchActiveFeatures]);
+    }, [id, fetchRoomById, fetchRoomFeatures, fetchActiveFeatures, fetchPricing]);
 
     useEffect(() => {
         if (selectedRoom) {
             setFormData({ ...selectedRoom });
         }
     }, [selectedRoom]);
+
+    useEffect(() => {
+        if (pricing) {
+            setPricingFormData({
+                basePrice: pricing.basePrice || 0,
+                hourlyRate: pricing.hourlyRate || 0,
+                emergencyCharge: pricing.emergencyCharge || 0,
+                cleaningCharge: pricing.cleaningCharge || 0
+            });
+        }
+    }, [pricing]);
 
     const handleAction = async (actionFn, successMsg) => {
         const res = await actionFn(id);
@@ -94,6 +122,29 @@ const OtRoom = () => {
         if (window.confirm("Remove this feature from the room?")) {
             const res = await unmapFromRoom(id, [featureId]);
             if (res.success) fetchRoomFeatures(id);
+        }
+    };
+
+    const handlePricingSave = async (e) => {
+        e.preventDefault();
+        const data = {
+            roomId: parseInt(id),
+            basePrice: parseFloat(pricingFormData.basePrice),
+            hourlyRate: parseFloat(pricingFormData.hourlyRate),
+            emergencyCharge: parseFloat(pricingFormData.emergencyCharge),
+            cleaningCharge: parseFloat(pricingFormData.cleaningCharge)
+        };
+
+        const res = pricing 
+            ? await updatePricing(id, data)
+            : await addPricing(data);
+
+        if (res.success) {
+            alert(`Pricing ${pricing ? 'updated' : 'initialized'} successfully`);
+            setIsPricingModalOpen(false);
+            fetchPricing(id);
+        } else {
+            alert(res.message || "Failed to save pricing");
         }
     };
 
@@ -288,6 +339,51 @@ const OtRoom = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Financial Setup Section */}
+                    <div style={{ backgroundColor: "white", borderRadius: "20px", border: "1px solid #e2e8f0", padding: "1.5rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                            <div>
+                                <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "#1e293b" }}>Financial Setup</h3>
+                                <p style={{ fontSize: "0.8rem", color: "#64748b" }}>Room pricing, hourly rates, and additional charges</p>
+                            </div>
+                            <button 
+                                onClick={() => setIsPricingModalOpen(true)}
+                                style={{ padding: "0.5rem 1rem", backgroundColor: "white", border: "1.5px solid var(--hospital-blue)", color: "var(--hospital-blue)", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "0.8rem" }}
+                            >
+                                <i className={`fa-solid ${pricing ? 'fa-pen' : 'fa-plus'}`}></i> {pricing ? 'Modify Rates' : 'Initialize Pricing'}
+                            </button>
+                        </div>
+
+                        {pricing ? (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                                <div style={{ padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                                    <p style={{ fontSize: "0.7rem", fontWeight: "800", color: "#94a3b8", marginBottom: "0.4rem", textTransform: "uppercase" }}>Base Price</p>
+                                    <p style={{ fontSize: "1.1rem", fontWeight: "800", color: "#1e293b" }}>₹ {pricing.basePrice?.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div style={{ padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                                    <p style={{ fontSize: "0.7rem", fontWeight: "800", color: "#94a3b8", marginBottom: "0.4rem", textTransform: "uppercase" }}>Hourly Rate</p>
+                                    <p style={{ fontSize: "1.1rem", fontWeight: "800", color: "#1e293b" }}>₹ {pricing.hourlyRate?.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div style={{ padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                                    <p style={{ fontSize: "0.7rem", fontWeight: "800", color: "#94a3b8", marginBottom: "0.4rem", textTransform: "uppercase" }}>Emergency Charge</p>
+                                    <p style={{ fontSize: "1.1rem", fontWeight: "800", color: "#1e293b" }}>₹ {pricing.emergencyCharge?.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div style={{ padding: "1rem", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                                    <p style={{ fontSize: "0.7rem", fontWeight: "800", color: "#94a3b8", marginBottom: "0.4rem", textTransform: "uppercase" }}>Cleaning Charge</p>
+                                    <p style={{ fontSize: "1.1rem", fontWeight: "800", color: "#1e293b" }}>₹ {pricing.cleaningCharge?.toLocaleString('en-IN')}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: "center", padding: "2rem", backgroundColor: "#fffbeb", borderRadius: "16px", border: "1.5px dashed #fcd34d" }}>
+                                <div style={{ width: "40px", height: "40px", backgroundColor: "#fef3c7", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem", color: "#d97706" }}>
+                                    <i className="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <h4 style={{ fontSize: "0.9rem", fontWeight: "800", color: "#92400e", marginBottom: "0.25rem" }}>Pricing Not Initialized</h4>
+                                <p style={{ color: "#b45309", fontSize: "0.8rem", fontWeight: "600" }}>Set up room pricing to enable billing for this OT room.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Sidebar Controls */}
@@ -385,6 +481,80 @@ const OtRoom = () => {
                         >
                             Map Features ({selectedFeatureIds.length})
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Pricing Modal */}
+            {isPricingModalOpen && (
+                <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1rem" }}>
+                    <div style={{ backgroundColor: "white", maxWidth: "500px", width: "100%", borderRadius: "20px", padding: "1.5rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                                <div>
+                                    <h2 style={{ fontSize: "1.1rem", fontWeight: "800", color: "#0f172a" }}>{pricing ? 'Update Pricing' : 'Initialize Pricing'}</h2>
+                                    <p style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "600" }}>Configuration for {selectedRoom.roomName}</p>
+                                </div>
+                                <button onClick={() => setIsPricingModalOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", color: "#94a3b8" }}>
+                                    <i className="fa-solid fa-xmark"></i>
+                                </button>
+                        </div>
+
+                        <form onSubmit={handlePricingSave} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", marginBottom: "0.5rem", color: "#64748b" }}>Base Price (₹)</label>
+                                <input 
+                                    type="number" 
+                                    required
+                                    style={{ width: "100%", padding: "0.75rem", border: "1.5px solid #f1f5f9", borderRadius: "10px", fontWeight: "700" }} 
+                                    value={pricingFormData.basePrice} 
+                                    onChange={(e) => setPricingFormData({...pricingFormData, basePrice: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", marginBottom: "0.5rem", color: "#64748b" }}>Hourly Rate (₹)</label>
+                                <input 
+                                    type="number" 
+                                    required
+                                    style={{ width: "100%", padding: "0.75rem", border: "1.5px solid #f1f5f9", borderRadius: "10px", fontWeight: "700" }} 
+                                    value={pricingFormData.hourlyRate} 
+                                    onChange={(e) => setPricingFormData({...pricingFormData, hourlyRate: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", marginBottom: "0.5rem", color: "#64748b" }}>Emergency Charge (₹)</label>
+                                <input 
+                                    type="number" 
+                                    required
+                                    style={{ width: "100%", padding: "0.75rem", border: "1.5px solid #f1f5f9", borderRadius: "10px", fontWeight: "700" }} 
+                                    value={pricingFormData.emergencyCharge} 
+                                    onChange={(e) => setPricingFormData({...pricingFormData, emergencyCharge: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", marginBottom: "0.5rem", color: "#64748b" }}>Cleaning Charge (₹)</label>
+                                <input 
+                                    type="number" 
+                                    required
+                                    style={{ width: "100%", padding: "0.75rem", border: "1.5px solid #f1f5f9", borderRadius: "10px", fontWeight: "700" }} 
+                                    value={pricingFormData.cleaningCharge} 
+                                    onChange={(e) => setPricingFormData({...pricingFormData, cleaningCharge: e.target.value})} 
+                                />
+                            </div>
+
+                            <div style={{ gridColumn: "span 2", marginTop: "1rem" }}>
+                                <button 
+                                    type="submit" 
+                                    disabled={pricingLoading}
+                                    style={{ 
+                                        width: "100%", padding: "1rem", backgroundColor: "var(--hospital-blue)", 
+                                        color: "white", border: "none", borderRadius: "12px", fontWeight: "800", 
+                                        cursor: "pointer", opacity: pricingLoading ? 0.7 : 1
+                                    }}
+                                >
+                                    {pricingLoading ? 'Saving...' : (pricing ? 'Update Records' : 'Initialize Records')}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
