@@ -1,9 +1,9 @@
 export const ANESTHESIA_DRUG_ENDPOINTS = {
-    ADD: "/api/anesthesia-drugs/:operationId/add",
-    GET_ALL: "/api/anesthesia-drugs/:operationId/get",
-    UPDATE: "/api/anesthesia-drugs/:operationId/update/:drugId",
-    REMOVE: "/api/anesthesia-drugs/:operationId/remove/:drugId",
-    SUMMARY: "/api/anesthesia-drugs/:operationId/summary"
+    ADD: "/anesthesia-drugs/:operationId/add",
+    GET_ALL: "/anesthesia-drugs/:operationId/get",
+    UPDATE: "/anesthesia-drugs/:operationId/update/:drugId",
+    REMOVE: "/anesthesia-drugs/:operationId/remove/:drugId",
+    SUMMARY: "/anesthesia-drugs/:operationId/summary"
 };
 
 export const DRUG_TYPES = [

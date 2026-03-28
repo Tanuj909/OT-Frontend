@@ -36,7 +36,10 @@ const AnesthesiaDrugSection = () => {
             getDrugSummary(operationId)
         ]);
         
-        if (drugsRes.success) setDrugs(drugsRes.data);
+        if (drugsRes.success) {
+            const drugsData = drugsRes.data;
+            setDrugs(Array.isArray(drugsData) ? drugsData : []);
+        }
         if (summaryRes.success) setSummary(summaryRes.data);
     }, [operationId, getDrugs, getDrugSummary]);
 
@@ -89,9 +92,9 @@ const AnesthesiaDrugSection = () => {
             {/* 📊 Summary Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem" }}>
                 <SmallSummaryCard label="Total Drugs" value={summary?.totalDrugs || 0} icon="fa-solid fa-pills" color="#8b5cf6" />
-                <SmallSummaryCard label="Induction" value={summary?.byDrugType?.INDUCTION || 0} icon="fa-solid fa-syringe" color="#3b82f6" />
-                <SmallSummaryCard label="Analgesic" value={summary?.byDrugType?.ANALGESIC || 0} icon="fa-solid fa-tablets" color="#ef4444" />
-                <SmallSummaryCard label="Other" value={(summary?.totalDrugs || 0) - ((summary?.byDrugType?.INDUCTION || 0) + (summary?.byDrugType?.ANALGESIC || 0))} icon="fa-solid fa-flask" color="#64748b" />
+                <SmallSummaryCard label="Induction" value={safeCount(summary?.byDrugType?.INDUCTION)} icon="fa-solid fa-syringe" color="#3b82f6" />
+                <SmallSummaryCard label="Analgesic" value={safeCount(summary?.byDrugType?.ANALGESIC)} icon="fa-solid fa-tablets" color="#ef4444" />
+                <SmallSummaryCard label="Other" value={(summary?.totalDrugs || 0) - (safeCount(summary?.byDrugType?.INDUCTION) + safeCount(summary?.byDrugType?.ANALGESIC))} icon="fa-solid fa-flask" color="#64748b" />
             </div>
 
             {/* ➕ Entry Form Section */}
@@ -189,10 +192,10 @@ const AnesthesiaDrugSection = () => {
                                 </div>
                                 <div style={{ padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                                     <div style={{ fontSize: "0.65rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase", marginBottom: "0.5rem" }}>Breakdown by Type</div>
-                                    {Object.entries(summary?.byDrugType || {}).map(([type, count]) => (
+                                    {Object.entries(summary?.byDrugType || {}).map(([type, val]) => (
                                         <div key={type} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "700", padding: "0.2rem 0" }}>
                                             <span>{type}:</span>
-                                            <span style={{ color: "var(--hospital-blue)" }}>{count}</span>
+                                            <span style={{ color: "var(--hospital-blue)" }}>{safeCount(val)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -202,7 +205,7 @@ const AnesthesiaDrugSection = () => {
                                 {Object.entries(summary?.totalDoseByDrug || {}).map(([drug, dose]) => (
                                     <div key={drug} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "700", padding: "0.2rem 0", borderBottom: "1px dashed #e2e8f0" }}>
                                         <span>{drug}</span>
-                                        <span style={{ color: "#ef4444" }}>{dose}</span>
+                                        <span style={{ color: "#ef4444" }}>{typeof dose === "object" ? (dose?.totalDose ?? JSON.stringify(dose)) : dose}</span>
                                     </div>
                                 ))}
                             </div>
@@ -212,6 +215,14 @@ const AnesthesiaDrugSection = () => {
             </div>
         </div>
     );
+};
+
+// Safe count extractor: handles arrays (returns .length), numbers, or defaults to 0
+const safeCount = (val) => {
+    if (Array.isArray(val)) return val.length;
+    if (typeof val === "number") return val;
+    if (typeof val === "object" && val !== null) return Object.keys(val).length;
+    return val || 0;
 };
 
 // --- Helpers ---
@@ -229,11 +240,11 @@ const FormInput = ({ label, name, type = "text", value, onChange, options, place
     <div>
         <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "800", marginBottom: "0.3rem", color: "#64748b" }}>{label}</label>
         {type === "select" ? (
-            <select name={name} value={value} onChange={onChange} style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontWeight: "700", fontSize: "0.75rem" }}>
+            <select name={name} value={value ?? ""} onChange={onChange} style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontWeight: "700", fontSize: "0.75rem" }}>
                 {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
         ) : (
-            <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontWeight: "700", fontSize: "0.75rem" }} />
+            <input type={type} name={name} value={value ?? ""} onChange={onChange} placeholder={placeholder} style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0", fontWeight: "700", fontSize: "0.75rem" }} />
         )}
     </div>
 );

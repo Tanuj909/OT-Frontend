@@ -225,7 +225,7 @@ const OperationManagement = () => {
                                                 <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
 
                                                     <button 
-                                                        onClick={() => navigate(`/operation-monitoring/${op.operationId}`)}
+                                                        onClick={() => navigate(`/operation-monitoring/${op.operationId}`, { state: { operationData: op } })}
                                                         style={{ 
                                                             padding: "0.4rem 0.8rem", 
                                                             backgroundColor: (op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? "#2563eb" : "#fff", 

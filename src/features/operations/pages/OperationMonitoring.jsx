@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useOperations } from "../hooks/useOperations";
 import { useStaffAssignment } from "../hooks/useStaffAssignment";
 import { useSurgeonAssignment } from "../hooks/useSurgeonAssignment";
@@ -18,6 +18,8 @@ import AnesthesiaDrugSection from "../components/AnesthesiaDrugSection";
 const OperationMonitoring = () => {
     const { operationId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const operationData = location.state?.operationData || null;
     const { startSurgery, checkSurgeryStatus } = useOperations();
     const { getPreopStatus } = usePreop();
 
@@ -133,28 +135,27 @@ const OperationMonitoring = () => {
     };
 
     const isPreopCompleted = preopStatus?.exists && preopStatus?.status === "COMPLETED";
-    const currentSurgeryStatus = surgeryStatus?.status;
+    const currentSurgeryStatus = surgeryStatus?.status || operationData?.status;
     const isSurgeryInProgress = currentSurgeryStatus === "IN_PROGRESS";
     const isEmergency = currentSurgeryStatus === "EMERGENCY";
 
+    // Find lead surgeon from assigned surgeons list
+    const leadSurgeonObj = assignedSurgeons.find(s => s.primary || s.role === "LEAD_SURGEON");
+
+    const patientData = {
+        name: operationData?.patientName || "Loading...",
+        mrn: operationData?.patientMrn || "N/A",
+        procedure: operationData?.procedureName || "Procedure Details",
+        surgeon: leadSurgeonObj?.surgeonName || operationData?.primarySurgeonName || "Not Assigned",
+        room: operationData?.roomName || "OT Room",
+        status: currentSurgeryStatus || "PENDING",
+        startTime: operationData?.startTime || new Date().toISOString()
+    };
     const restrictedSections = ["INTRA_OP", "IV_FLUIDS", "ANESTHESIA_DRUGS", "VITALS", "NOTES", "CONSUMABLES"];
     const isSectionRestricted = restrictedSections.includes(activeSection);
     
     // Logic: Block if NOT emergency AND (preop not done OR surgery not in progress)
     const isBlocked = !isEmergency && isSectionRestricted && (!isPreopCompleted || !isSurgeryInProgress);
-
-
-    // Sample data (to be replaced by APIs)
-    const patientData = {
-        name: "Johnathan Smith",
-        mrn: "MRN-882910",
-        procedure: "Laparoscopic Cholecystectomy",
-        surgeon: "Dr. Sarah Mitchell",
-        anesthesiologist: "Dr. Robert Chen",
-        room: "OT Room 04",
-        status: currentSurgeryStatus || "PENDING",
-        startTime: surgeryStatus?.actualStartTime || new Date().toISOString()
-    };
 
     const sections = [
         { id: "STAFF", label: "Assigned Staff", icon: "fa-solid fa-users" },
