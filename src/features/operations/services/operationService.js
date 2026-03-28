@@ -12,3 +12,9 @@ export const getOperationsByStatusApi = (status) =>
 
 export const scheduleOperationApi = (id, data) => 
     axiosInstance.post(OPERATION_ENDPOINTS.SCHEDULE.replace(":id", id), data);
+
+export const startSurgeryApi = (id) => 
+    axiosInstance.patch(OPERATION_ENDPOINTS.START_SURGERY.replace(":id", id));
+
+export const checkSurgeryStatusApi = (id) => 
+    axiosInstance.get(OPERATION_ENDPOINTS.CHECK_STATUS.replace(":id", id));

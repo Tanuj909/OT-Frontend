@@ -3,7 +3,8 @@ import {
     getPreopApi,
     createPreopApi,
     updatePreopApi,
-    updatePreopStatusApi
+    updatePreopStatusApi,
+    getPreopStatusApi
 } from "../services/preopService";
 
 export const usePreop = () => {
@@ -57,11 +58,27 @@ export const usePreop = () => {
         }
     }, []);
 
+    const getPreopStatus = useCallback(async (opId) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await getPreopStatusApi(opId);
+            return { success: true, data: res.data?.data || res.data };
+        } catch (err) {
+            const msg = err.response?.data?.message || "Failed to fetch pre-op status.";
+            setError(msg);
+            return { success: false, message: msg };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
         fetchPreop,
         savePreop,
-        updatePreopStatus
+        updatePreopStatus,
+        getPreopStatus
     };
 };

@@ -12,3 +12,6 @@ export const updatePreopApi = (opId, data) =>
 
 export const updatePreopStatusApi = (opId, data) => 
     axiosInstance.patch(PREOP_ENDPOINTS.UPDATE_STATUS.replace(":operationId", opId), data);
+
+export const getPreopStatusApi = (opId) => 
+    axiosInstance.get(PREOP_ENDPOINTS.GET_STATUS.replace(":operationId", opId));

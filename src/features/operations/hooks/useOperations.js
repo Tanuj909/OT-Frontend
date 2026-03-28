@@ -3,7 +3,9 @@ import {
     getRequestedOperationsApi,
     getAllOperationsApi,
     getOperationsByStatusApi,
-    scheduleOperationApi
+    scheduleOperationApi,
+    startSurgeryApi,
+    checkSurgeryStatusApi
 } from "../services/operationService";
 
 export const useOperations = () => {
@@ -64,6 +66,34 @@ export const useOperations = () => {
         }
     }, []);
 
+    const startSurgery = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await startSurgeryApi(id);
+            return { success: true, data: res.data?.data || res.data, message: res.data?.message };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to start surgery.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const checkSurgeryStatus = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await checkSurgeryStatusApi(id);
+            return { success: true, data: res.data?.data || res.data };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to check surgery status.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
 
     return {
         loading,
@@ -72,6 +102,8 @@ export const useOperations = () => {
         fetchRequestedOperations,
         fetchAllOperations,
         fetchOperationsByStatus,
-        scheduleOperation
+        scheduleOperation,
+        startSurgery,
+        checkSurgeryStatus
     };
 };

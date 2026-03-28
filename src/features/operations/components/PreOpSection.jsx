@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { usePreop } from "../hooks/usePreop";
 import { ASA_GRADES, NPO_STATUSES, ASSESSMENT_STATUS } from "../constants/preop.endpoint";
 
-const PreOpSection = () => {
+const PreOpSection = ({ onStatusUpdate }) => {
     const { operationId } = useParams();
     const { loading, fetchPreop, savePreop, updatePreopStatus } = usePreop();
     const [assessment, setAssessment] = useState(null);
@@ -54,6 +54,7 @@ const PreOpSection = () => {
         const res = await savePreop(operationId, formData, isUpdate);
         if (res.success) {
             alert("Assessment saved successfully!");
+            if (onStatusUpdate) onStatusUpdate();
             // Optionally refresh or update state
         } else {
             alert(res.message || "Failed to save assessment");
@@ -69,6 +70,7 @@ const PreOpSection = () => {
             alert(`Status updated to ${newStatus}`);
             setShowReassessmentInput(false);
             setReassessmentReason("");
+            if (onStatusUpdate) onStatusUpdate();
             // Refresh assessment data
             const refreshed = await fetchPreop(operationId);
             if (refreshed.success) setAssessment(refreshed.data);

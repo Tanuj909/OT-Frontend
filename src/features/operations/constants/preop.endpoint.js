@@ -1,6 +1,7 @@
 export const PREOP_ENDPOINTS = {
     BASE: "/operations/:operationId/pre-op",
     UPDATE_STATUS: "/operations/:operationId/pre-op/status",
+    GET_STATUS: "/operations/:operationId/pre-op/status",
 };
 
 export const ASA_GRADES = ["ASA1", "ASA2", "ASA3", "ASA4", "ASA5", "ASA6"];

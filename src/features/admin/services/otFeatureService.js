@@ -17,7 +17,7 @@ export const updateFeatureApi = (id, data) =>
     axiosInstance.put(OT_FEATURE_ENDPOINTS.ITEM(id), data);
 
 export const deleteFeatureApi = (id) => 
-    axiosInstance.delete(OT_FEATURE_ENDPOINTS.ITEM(id));
+    axiosInstance.delete(OT_FEATURE_ENDPOINTS.DELETE_FEATURE(id));
 
 export const toggleFeatureStatusApi = (id) => 
     axiosInstance.patch(OT_FEATURE_ENDPOINTS.TOGGLE(id));
