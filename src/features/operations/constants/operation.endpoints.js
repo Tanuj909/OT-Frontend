@@ -4,5 +4,7 @@ export const OPERATION_ENDPOINTS = {
     GET_BY_STATUS: "/admin/operations/status/:status",
     SCHEDULE: "/admin/operations/:id/schedule",
     START_SURGERY: "/surgery/:id/start",
-    CHECK_STATUS: "/surgery/:id/is-started"
+    CHECK_STATUS: "/surgery/:id/is-started",
+    GET_READINESS: "/operations/:id/surgery-readiness",
+    END_SURGERY: "/operations/:id/end"
 };

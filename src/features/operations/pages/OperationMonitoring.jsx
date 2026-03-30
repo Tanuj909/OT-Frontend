@@ -14,6 +14,9 @@ import NotesSection from "../components/NotesSection";
 import ConsumablesSection from "../components/ConsumablesSection";
 import IVFluidSection from "../components/IVFluidSection";
 import AnesthesiaDrugSection from "../components/AnesthesiaDrugSection";
+import EquipmentSection from "../components/EquipmentSection";
+import ImplantSection from "../components/ImplantSection";
+import SurgeryEndModal from "../components/SurgeryEndModal";
 
 const OperationMonitoring = () => {
     const { operationId } = useParams();
@@ -48,6 +51,7 @@ const OperationMonitoring = () => {
     const [surgeryStatus, setSurgeryStatus] = useState(null);
     const [preopStatus, setPreopStatus] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isEndModalOpen, setIsEndModalOpen] = useState(false);
 
     const loadAllStaffData = useCallback(async () => {
         // Fetch assigned
@@ -95,6 +99,11 @@ const OperationMonitoring = () => {
         }
     };
 
+    const handleEndSuccess = (data) => {
+        refreshStatuses();
+        navigate("/admin/dashboard/operations");
+    };
+
     const handleAssignStaff = async (staffId, staffName, role) => {
         const staffObj = [{ staffId: parseInt(staffId), staffName, role }];
         const res = await assignStaffToOperation(operationId, staffObj);
@@ -137,6 +146,8 @@ const OperationMonitoring = () => {
     const isPreopCompleted = preopStatus?.exists && preopStatus?.status === "COMPLETED";
     const currentSurgeryStatus = surgeryStatus?.status || operationData?.status;
     const isSurgeryInProgress = currentSurgeryStatus === "IN_PROGRESS";
+    const isSurgeryCompleted = currentSurgeryStatus === "COMPLETED";
+    const isSurgeryStarted = currentSurgeryStatus === "IN_PROGRESS" || currentSurgeryStatus === "COMPLETED";
     const isEmergency = currentSurgeryStatus === "EMERGENCY";
 
     // Find lead surgeon from assigned surgeons list
@@ -151,11 +162,11 @@ const OperationMonitoring = () => {
         status: currentSurgeryStatus || "PENDING",
         startTime: operationData?.startTime || new Date().toISOString()
     };
-    const restrictedSections = ["INTRA_OP", "IV_FLUIDS", "ANESTHESIA_DRUGS", "VITALS", "NOTES", "CONSUMABLES"];
+    const restrictedSections = ["INTRA_OP", "IV_FLUIDS", "ANESTHESIA_DRUGS", "VITALS", "NOTES", "CONSUMABLES", "EQUIPMENT", "IMPLANTS"];
     const isSectionRestricted = restrictedSections.includes(activeSection);
     
-    // Logic: Block if NOT emergency AND (preop not done OR surgery not in progress)
-    const isBlocked = !isEmergency && isSectionRestricted && (!isPreopCompleted || !isSurgeryInProgress);
+    // Logic: Block if NOT emergency AND (preop not done OR surgery not started/completed)
+    const isBlocked = !isEmergency && isSectionRestricted && (!isPreopCompleted || !isSurgeryStarted);
 
     const sections = [
         { id: "STAFF", label: "Assigned Staff", icon: "fa-solid fa-users" },
@@ -165,7 +176,9 @@ const OperationMonitoring = () => {
         { id: "ANESTHESIA_DRUGS", label: "Anesthesia Drugs", icon: "fa-solid fa-syringe" },
         { id: "VITALS", label: "Patient Vitals", icon: "fa-solid fa-gauge-high" },
         { id: "NOTES", label: "Operation Notes", icon: "fa-solid fa-file-medical" },
-        { id: "CONSUMABLES", label: "Consumables Used", icon: "fa-solid fa-box-archive" }
+        { id: "CONSUMABLES", label: "Consumables Used", icon: "fa-solid fa-box-archive" },
+        { id: "EQUIPMENT", label: "Equipment Usage", icon: "fa-solid fa-laptop-medical" },
+        { id: "IMPLANTS", label: "Implants", icon: "fa-solid fa-bone" }
     ];
 
     return (
@@ -192,19 +205,65 @@ const OperationMonitoring = () => {
                     </div>
                 </div>
 
-                <div style={{ textAlign: "right", display: "flex", gap: "1.5rem" }}>
-                    <div>
-                        <div style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase" }}>Current OT Room</div>
-                        <div style={{ fontWeight: "800", color: "var(--hospital-blue)" }}>{patientData.room}</div>
+                <div style={{ textAlign: "right", display: "flex", gap: "1rem", alignItems: "center" }}>
+                    <div style={{ 
+                        padding: "0.5rem 1rem", borderRadius: "12px", border: "1px solid #f1f5f9", 
+                        backgroundColor: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                        display: "flex", flexDirection: "column", gap: "0.15rem"
+                    }}>
+                        <div style={{ fontSize: "0.65rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.025em" }}>Current OT Room</div>
+                        <div style={{ fontWeight: "800", color: "var(--hospital-blue)", fontSize: "0.875rem" }}>{patientData.room}</div>
                     </div>
-                    <div>
-                        <div style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase" }}>Lead Surgeon</div>
-                        <div style={{ fontWeight: "800" }}>{patientData.surgeon}</div>
+                    
+                    <div style={{ 
+                        padding: "0.5rem 1rem", borderRadius: "12px", border: "1px solid #f1f5f9", 
+                        backgroundColor: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                        display: "flex", flexDirection: "column", gap: "0.15rem"
+                    }}>
+                        <div style={{ fontSize: "0.65rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.025em" }}>Lead Surgeon</div>
+                        <div style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.875rem" }}>{patientData.surgeon}</div>
                     </div>
-                    <div style={{ backgroundColor: "#2563eb", padding: "0.4rem 1rem", borderRadius: "8px", color: "white", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <i className="fa-solid fa-spinner fa-spin"></i>
-                        <span style={{ fontWeight: "800", fontSize: "0.75rem" }}>MONITORING ACTIVE</span>
-                    </div>
+                    
+                    {isSurgeryInProgress && (
+                        <button 
+                            onClick={() => setIsEndModalOpen(true)}
+                            className="end-surgery-btn"
+                            style={{ 
+                                height: "42px",
+                                padding: "0 1.25rem", borderRadius: "10px", 
+                                background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                                color: "white", display: "flex", alignItems: "center", gap: "0.6rem",
+                                border: "none", cursor: "pointer", fontWeight: "800", fontSize: "0.75rem",
+                                boxShadow: "0 8px 15px -3px rgba(239, 68, 68, 0.4)",
+                                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                textTransform: "uppercase", letterSpacing: "0.05em",
+                                border: "1px solid rgba(255, 255, 255, 0.1)"
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                                e.currentTarget.style.boxShadow = "0 12px 20px -5px rgba(239, 68, 68, 0.5)";
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.transform = "translateY(0)";
+                                e.currentTarget.style.boxShadow = "0 8px 15px -3px rgba(239, 68, 68, 0.4)";
+                            }}
+                        >
+                            <i className="fa-solid fa-circle-stop" style={{ fontSize: "0.9rem" }}></i>
+                            <span>End Surgery</span>
+                        </button>
+                    )}
+
+                    {isSurgeryCompleted && (
+                        <div style={{ 
+                            height: "42px", padding: "0 1.25rem", borderRadius: "10px", 
+                            backgroundColor: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0",
+                            display: "flex", alignItems: "center", gap: "0.6rem", fontWeight: "800", fontSize: "0.75rem",
+                            textTransform: "uppercase", letterSpacing: "0.05em"
+                        }}>
+                            <i className="fa-solid fa-circle-check" style={{ fontSize: "0.9rem" }}></i>
+                            <span>Surgery Completed</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -277,6 +336,8 @@ const OperationMonitoring = () => {
                     {activeSection === "VITALS" && <VitalsSection />}
                     {activeSection === "NOTES" && <NotesSection />}
                     {activeSection === "CONSUMABLES" && <ConsumablesSection />}
+                    {activeSection === "EQUIPMENT" && <EquipmentSection />}
+                    {activeSection === "IMPLANTS" && <ImplantSection />}
 
                     {/* Blocking Overlay */}
                     {isBlocked && (
@@ -318,6 +379,12 @@ const OperationMonitoring = () => {
                     )}
                 </div>
             </div>
+            <SurgeryEndModal 
+                isOpen={isEndModalOpen} 
+                onClose={() => setIsEndModalOpen(false)} 
+                operationId={operationId} 
+                onEndSuccess={handleEndSuccess}
+            />
         </div>
     );
 };

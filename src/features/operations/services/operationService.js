@@ -18,3 +18,9 @@ export const startSurgeryApi = (id) =>
 
 export const checkSurgeryStatusApi = (id) => 
     axiosInstance.get(OPERATION_ENDPOINTS.CHECK_STATUS.replace(":id", id));
+
+export const getSurgeryReadinessApi = (id) => 
+    axiosInstance.get(OPERATION_ENDPOINTS.GET_READINESS.replace(":id", id));
+
+export const endSurgeryApi = (id, data) => 
+    axiosInstance.patch(OPERATION_ENDPOINTS.END_SURGERY.replace(":id", id), data);

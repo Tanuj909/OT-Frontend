@@ -24,7 +24,9 @@ const VitalsSection = () => {
         painScale: "",
         consciousness: "Alert",
         sedationScore: "",
-        additionalNotes: ""
+        additionalNotes: "",
+        phase: "INTRA_OP",
+        isStable: true
     });
 
     const refreshData = useCallback(async () => {
@@ -45,8 +47,11 @@ const VitalsSection = () => {
     }, [refreshData]);
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: type === "checkbox" ? checked : value 
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -64,7 +69,9 @@ const VitalsSection = () => {
             etco2: formData.etco2 ? Number(formData.etco2) : null,
             painScale: formData.painScale ? Number(formData.painScale) : null,
             sedationScore: formData.sedationScore || null,
-            additionalNotes: formData.additionalNotes || null
+            additionalNotes: formData.additionalNotes || null,
+            phase: formData.phase,
+            isStable: formData.isStable
         };
 
         const res = await createVitals(operationId, payload);
@@ -74,7 +81,8 @@ const VitalsSection = () => {
             setFormData({
                 heartRate: "", systolicBp: "", diastolicBp: "", meanBp: "",
                 respiratoryRate: "", temperature: "", oxygenSaturation: "", etco2: "",
-                painScale: "", consciousness: "Alert", sedationScore: "", additionalNotes: ""
+                painScale: "", consciousness: "Alert", sedationScore: "", additionalNotes: "",
+                phase: "INTRA_OP", isStable: true
             });
             refreshData();
         } else {
@@ -156,7 +164,19 @@ const VitalsSection = () => {
                             <FormInput label="Pain Scale (0-10)" name="painScale" type="number" value={formData.painScale} onChange={handleInputChange} placeholder="3" min="0" max="10" />
                             <FormSelect label="Consciousness" name="consciousness" value={formData.consciousness} onChange={handleInputChange} options={CONSCIOUSNESS_OPTIONS} />
                             <FormSelect label="Sedation Score" name="sedationScore" value={formData.sedationScore} onChange={handleInputChange} options={["", ...SEDATION_OPTIONS]} />
-                            <div></div>
+                            <FormSelect label="Phase" name="phase" value={formData.phase} onChange={handleInputChange} options={["INTRA_OP", "POST_OP"]} />
+                            <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: "0.4rem" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", fontWeight: "800", color: "#334155", cursor: "pointer" }}>
+                                    <input 
+                                        type="checkbox" 
+                                        name="isStable" 
+                                        checked={formData.isStable} 
+                                        onChange={handleInputChange} 
+                                        style={{ width: "1.1rem", height: "1.1rem", cursor: "pointer" }} 
+                                    />
+                                    Mark Patient as Stable
+                                </label>
+                            </div>
                         </div>
                         <div style={{ marginBottom: "1rem" }}>
                             <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "800", marginBottom: "0.3rem", color: "#64748b" }}>Additional Notes</label>
@@ -187,11 +207,23 @@ const VitalsSection = () => {
 
             {/* Latest vitals timestamp */}
             {latestVitals && (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.6rem 1rem", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-                    <i className="fa-solid fa-circle" style={{ color: "#22c55e", fontSize: "0.5rem", animation: "pulse 2s infinite" }}></i>
-                    <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#166534" }}>
-                        Last recorded: {formatTime(latestVitals.recordedTime)} by <strong>{latestVitals.recordedBy}</strong>
-                    </span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 1rem", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <i className="fa-solid fa-circle" style={{ color: "#22c55e", fontSize: "0.5rem", animation: "pulse 2s infinite" }}></i>
+                        <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#166534" }}>
+                            Last recorded: {formatTime(latestVitals.recordedTime)} by <strong>{latestVitals.recordedBy}</strong>
+                        </span>
+                    </div>
+                    {latestVitals.phase && (
+                        <span style={{ 
+                            fontSize: "0.65rem", fontWeight: "900", padding: "0.2rem 0.6rem", borderRadius: "6px",
+                            backgroundColor: latestVitals.phase === "INTRA_OP" ? "#fee2e2" : "#e0f2fe",
+                            color: latestVitals.phase === "INTRA_OP" ? "#991b1b" : "#075985",
+                            border: "1px solid currentColor"
+                        }}>
+                            {latestVitals.phase === "INTRA_OP" ? "INTRA-OPERATIVE PHASE" : "POST-OPERATIVE PHASE"}
+                        </span>
+                    )}
                 </div>
             )}
 
@@ -241,10 +273,16 @@ const VitalsSection = () => {
 
             {/* Extra Info Cards: Consciousness, Sedation, Notes */}
             {latestVitals && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
                     <InfoCard icon="fa-solid fa-brain" label="Consciousness" value={latestVitals.consciousness} color="#8b5cf6" />
                     <InfoCard icon="fa-solid fa-bed" label="Sedation" value={latestVitals.sedationScore || "None"} color="#6366f1" />
-                    <InfoCard icon="fa-solid fa-note-sticky" label="Notes" value={latestVitals.additionalNotes || "No clinical notes"} color="#64748b" />
+                    <InfoCard 
+                        icon={latestVitals.isStable ? "fa-solid fa-check-circle" : "fa-solid fa-triangle-exclamation"} 
+                        label="Patient State" 
+                        value={latestVitals.isStable ? "STABLE" : "INSTABILITY DETECTED"} 
+                        color={latestVitals.isStable ? "#10b981" : "#ef4444"} 
+                    />
+                    <InfoCard icon="fa-solid fa-note-sticky" label="Notes" value={latestVitals.additionalNotes || "No notes"} color="#64748b" />
                 </div>
             )}
 
@@ -286,7 +324,9 @@ const VitalsSection = () => {
                                     <th style={thStyle}>Pain</th>
                                     <th style={thStyle}>Consciousness</th>
                                     <th style={thStyle}>Sedation</th>
-                                    <th style={thStyle}>By</th>
+                                    <th style={thStyle}>Staff</th>
+                                    <th style={thStyle}>Phase</th>
+                                    <th style={thStyle}>Stability</th>
                                     <th style={thStyle}>Notes</th>
                                     <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
                                 </tr>
@@ -337,6 +377,23 @@ const VitalsSection = () => {
                                             </td>
                                             <td style={tdStyle}>
                                                 <span style={{ fontSize: "0.65rem", fontWeight: "700", color: "#64748b" }}>{v.recordedBy || "—"}</span>
+                                            </td>
+                                            <td style={tdStyle}>
+                                                {v.phase ? (
+                                                    <span style={{ 
+                                                        fontSize: "0.65rem", fontWeight: "900", padding: "0.15rem 0.4rem", borderRadius: "4px",
+                                                        backgroundColor: v.phase === "INTRA_OP" ? "#fdf2f2" : "#f0f9ff",
+                                                        color: v.phase === "INTRA_OP" ? "#991b1b" : "#075985"
+                                                    }}>
+                                                        {v.phase === "INTRA_OP" ? "INTRA" : "POST"}
+                                                    </span>
+                                                ) : "—"}
+                                            </td>
+                                            <td style={tdStyle}>
+                                                {v.isStable !== null ? (
+                                                    <i className={`fa-solid ${v.isStable ? "fa-circle-check" : "fa-circle-exclamation"}`} 
+                                                       style={{ color: v.isStable ? "#10b981" : "#ef4444" }}></i>
+                                                ) : "—"}
                                             </td>
                                             <td style={tdStyle}>
                                                 <span style={{ fontSize: "0.65rem", fontWeight: "600", color: "#94a3b8", maxWidth: "120px", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={v.additionalNotes || ""}>

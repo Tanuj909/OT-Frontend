@@ -27,6 +27,7 @@ const AnesthesiaDrugSection = () => {
         route: "IV",
         drugType: "INDUCTION",
         administeredAt: new Date().toISOString().slice(0, 16),
+        endTime: "",
         notes: ""
     });
 
@@ -61,6 +62,16 @@ const AnesthesiaDrugSection = () => {
         if (res.success) {
             setIsFormOpen(false);
             setEditingDrug(null);
+            setFormData({
+                drugName: "",
+                dose: "",
+                doseUnit: "mg",
+                route: "IV",
+                drugType: "INDUCTION",
+                administeredAt: new Date().toISOString().slice(0, 16),
+                endTime: "",
+                notes: ""
+            });
             refreshData();
         } else {
             alert(res.message);
@@ -76,6 +87,7 @@ const AnesthesiaDrugSection = () => {
             route: drug.route,
             drugType: drug.drugType,
             administeredAt: drug.administeredAt ? drug.administeredAt.slice(0, 16) : "",
+            endTime: drug.endTime ? drug.endTime.slice(0, 16) : "",
             notes: drug.notes || ""
         });
         setIsFormOpen(true);
@@ -121,7 +133,8 @@ const AnesthesiaDrugSection = () => {
                         </div>
                         <FormInput label="Type" name="drugType" type="select" options={DRUG_TYPES} value={formData.drugType} onChange={handleInputChange} />
                         <FormInput label="Route" name="route" type="select" options={DRUG_ROUTES} value={formData.route} onChange={handleInputChange} />
-                        <FormInput label="Time" name="administeredAt" type="datetime-local" value={formData.administeredAt} onChange={handleInputChange} />
+                        <FormInput label="Start Time" name="administeredAt" type="datetime-local" value={formData.administeredAt} onChange={handleInputChange} />
+                        <FormInput label="End Time" name="endTime" type="datetime-local" value={formData.endTime} onChange={handleInputChange} />
                         <button type="submit" style={{ padding: "0.70rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "8px", fontWeight: "800", cursor: "pointer" }}>
                             {editingDrug ? "Update" : "Log Drug"}
                         </button>
@@ -136,8 +149,8 @@ const AnesthesiaDrugSection = () => {
                         <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
                             <th style={thStyle}>Drug Name</th>
                             <th style={thStyle}>Dosage</th>
-                            <th style={thStyle}>Type/Route</th>
-                            <th style={thStyle}>Administered At</th>
+                             <th style={thStyle}>Type/Route</th>
+                            <th style={thStyle}>Timeline</th>
                             <th style={thStyle}>Actions</th>
                         </tr>
                     </thead>
@@ -153,7 +166,18 @@ const AnesthesiaDrugSection = () => {
                                         <div style={{ fontSize: "0.7rem", fontWeight: "800", color: "#3b82f6" }}>{drug.drugType}</div>
                                         <div style={{ fontSize: "0.6rem", color: "#64748b" }}>via {drug.route}</div>
                                     </td>
-                                    <td style={tdStyle}>{drug.administeredAt?.replace("T", " ").slice(0, 16)}</td>
+                                    <td style={tdStyle}>
+                                        <div style={{ fontSize: "0.75rem", fontWeight: "800", color: "#1e293b" }}>
+                                            <i className="fa-solid fa-play" style={{ fontSize: "0.6rem", color: "#22c55e", marginRight: "0.3rem" }}></i>
+                                            {drug.administeredAt?.replace("T", " ").slice(0, 16)}
+                                        </div>
+                                        {drug.endTime && (
+                                            <div style={{ fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginTop: "0.2rem" }}>
+                                                <i className="fa-solid fa-stop" style={{ fontSize: "0.6rem", color: "#ef4444", marginRight: "0.3rem" }}></i>
+                                                {drug.endTime.replace("T", " ").slice(0, 16)}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td style={tdStyle}>
                                         <div style={{ display: "flex", gap: "0.4rem" }}>
                                             <button onClick={() => handleEdit(drug)} style={miniBtn("#2563eb")}><i className="fa-solid fa-edit"></i></button>

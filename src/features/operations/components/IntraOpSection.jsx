@@ -177,7 +177,7 @@ const IntraOpSection = () => {
                         {isUpdate && (
                             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginBottom: "1.5rem" }}>
                                 <button type="button" onClick={() => handleStatusUpdate(INTRAOP_STATUS.COMPLETED)} disabled={loading || record?.status === "COMPLETED"} style={{ padding: "0.5rem 1rem", backgroundColor: "#10b981", color: "white", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                                    <i className="fa-solid fa-flag-checkered"></i> Complete Surgery
+                                    <i className="fa-solid fa-flag-checkered"></i> Complete Intra-OP
                                 </button>
                                 <button type="button" onClick={() => setShowAbortInput(true)} disabled={loading || record?.status === "ABORTED"} style={{ padding: "0.5rem 1rem", backgroundColor: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                                     <i className="fa-solid fa-circle-xmark"></i> Abort
