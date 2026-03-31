@@ -5,7 +5,9 @@ import {
     getOperationsByStatusApi,
     scheduleOperationApi,
     startSurgeryApi,
-    checkSurgeryStatusApi
+    checkSurgeryStatusApi,
+    getSurgeryReadinessApi,
+    getOperationReportApi
 } from "../services/operationService";
 
 export const useOperations = () => {
@@ -94,6 +96,33 @@ export const useOperations = () => {
         }
     }, []);
 
+    const fetchSurgeryReadiness = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await getSurgeryReadinessApi(id);
+            return { success: true, data: res.data?.data || res.data };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to fetch surgical readiness.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const fetchOperationReport = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await getOperationReportApi(id);
+            return { success: true, data: res.data?.data || res.data };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to fetch operation report.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     return {
         loading,
@@ -104,6 +133,8 @@ export const useOperations = () => {
         fetchOperationsByStatus,
         scheduleOperation,
         startSurgery,
-        checkSurgeryStatus
+        checkSurgeryStatus,
+        fetchSurgeryReadiness,
+        fetchOperationReport
     };
 };

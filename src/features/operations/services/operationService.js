@@ -24,3 +24,6 @@ export const getSurgeryReadinessApi = (id) =>
 
 export const endSurgeryApi = (id, data) => 
     axiosInstance.patch(OPERATION_ENDPOINTS.END_SURGERY.replace(":id", id), data);
+
+export const getOperationReportApi = (id) => 
+    axiosInstance.get(OPERATION_ENDPOINTS.GET_REPORT.replace(":id", id));

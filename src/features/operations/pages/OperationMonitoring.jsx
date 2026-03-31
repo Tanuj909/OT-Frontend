@@ -19,6 +19,7 @@ import AnesthesiaDrugSection from "../components/AnesthesiaDrugSection";
 import EquipmentSection from "../components/EquipmentSection";
 import ImplantSection from "../components/ImplantSection";
 import SurgeryEndModal from "../components/SurgeryEndModal";
+import OperationReportModal from "../components/OperationReportModal";
 
 const OperationMonitoring = () => {
     const { user } = useAuthContext();
@@ -27,7 +28,12 @@ const OperationMonitoring = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const operationData = location.state?.operationData || null;
-    const { startSurgery, checkSurgeryStatus } = useOperations();
+    const { 
+        startSurgery, 
+        checkSurgeryStatus, 
+        fetchSurgeryReadiness, 
+        fetchOperationReport 
+    } = useOperations();
     const { getPreopStatus } = usePreop();
 
     const { 
@@ -55,6 +61,9 @@ const OperationMonitoring = () => {
     const [preopStatus, setPreopStatus] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isEndModalOpen, setIsEndModalOpen] = useState(false);
+    const [surgeryReadiness, setSurgeryReadiness] = useState(null);
+    const [reportData, setReportData] = useState(null);
+    const [isReportOpen, setIsReportOpen] = useState(false);
 
     // Define all possible sections
     const allSections = [
@@ -128,10 +137,13 @@ const OperationMonitoring = () => {
 
             const surgeryRes = await checkSurgeryStatus(operationId);
             if (surgeryRes.success) setSurgeryStatus(surgeryRes.data);
+
+            const readinessRes = await fetchSurgeryReadiness(operationId);
+            if (readinessRes.success) setSurgeryReadiness(readinessRes.data);
         } finally {
             setIsRefreshing(false);
         }
-    }, [operationId, getPreopStatus, checkSurgeryStatus]);
+    }, [operationId, getPreopStatus, checkSurgeryStatus, fetchSurgeryReadiness]);
 
     useEffect(() => {
         loadAllStaffData();
@@ -212,6 +224,16 @@ const OperationMonitoring = () => {
         room: operationData?.roomName || "OT Room",
         status: currentSurgeryStatus || "PENDING",
         startTime: operationData?.startTime || new Date().toISOString()
+    };
+
+    const handleViewReport = async () => {
+        const res = await fetchOperationReport(operationId);
+        if (res.success) {
+            setReportData(res.data);
+            setIsReportOpen(true);
+        } else {
+            alert(res.message || "Failed to load report");
+        }
     };
     const restrictedSections = ["INTRA_OP", "IV_FLUIDS", "ANESTHESIA_DRUGS", "VITALS", "NOTES", "CONSUMABLES", "EQUIPMENT", "IMPLANTS"];
     // Only restrict sections that are actually in the user's available sections
@@ -303,6 +325,27 @@ const OperationMonitoring = () => {
                             <i className="fa-solid fa-circle-check" style={{ fontSize: "0.9rem" }}></i>
                             <span>Surgery Completed</span>
                         </div>
+                    )}
+
+                    {surgeryReadiness?.currentStatus === "COMPLETED" && (
+                        <button 
+                            onClick={handleViewReport}
+                            style={{ 
+                                height: "42px",
+                                padding: "0 1.25rem", borderRadius: "10px", 
+                                background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                                color: "white", display: "flex", alignItems: "center", gap: "0.6rem",
+                                border: "none", cursor: "pointer", fontWeight: "800", fontSize: "0.75rem",
+                                boxShadow: "0 8px 15px -3px rgba(37, 99, 235, 0.4)",
+                                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                textTransform: "uppercase", letterSpacing: "0.05em"
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+                            onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                        >
+                            <i className="fa-solid fa-file-invoice" style={{ fontSize: "0.9rem" }}></i>
+                            <span>Operation Report</span>
+                        </button>
                     )}
                 </div>
             </div>
@@ -424,6 +467,11 @@ const OperationMonitoring = () => {
                 onClose={() => setIsEndModalOpen(false)} 
                 operationId={operationId} 
                 onEndSuccess={handleEndSuccess}
+            />
+            <OperationReportModal 
+                isOpen={isReportOpen} 
+                onClose={() => setIsReportOpen(false)} 
+                data={reportData}
             />
         </div>
     );
