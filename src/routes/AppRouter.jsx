@@ -21,6 +21,7 @@ import EquipmentManagement from "../features/equipment/pages/EquipmentManagement
 import EquipmentAttributePage from "../features/equipment/pages/EquipmentAttributePage";
 import CatalogManagement from "../features/catalog/pages/CatalogManagement";
 import OperationManagement from "../features/operations/pages/OperationManagement";
+import OperationsListWrapper from "../features/operations/pages/OperationsListWrapper";
 import CatalogPricePage from "../features/catalog/pages/CatalogPricePage";
 import WardManagement from "../features/admin/pages/WardManagement";
 import OperationMonitoring from "../features/operations/pages/OperationMonitoring";
@@ -73,7 +74,7 @@ const AppRouter = () => {
                         <Route path="/ot-ward" element={<RoleGuard allowedRoles={[ROLES.ADMIN]}><WardManagement /></RoleGuard>} />
 
                         {/* Clinical & Operations (Shared) */}
-                        <Route path="/operations-list" element={<RoleGuard allowedRoles={CLINICAL_ROLES}><OperationManagement /></RoleGuard>} />
+                        <Route path="/operations-list" element={<RoleGuard allowedRoles={CLINICAL_ROLES}><OperationsListWrapper /></RoleGuard>} />
                         <Route path="/operation-monitoring/:operationId" element={<RoleGuard allowedRoles={CLINICAL_ROLES}><OperationMonitoring /></RoleGuard>} />
                         <Route path="/operation-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.RECEPTIONIST]}><IpdRequests /></RoleGuard>} />
 
