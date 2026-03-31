@@ -5,6 +5,8 @@ import { useStaffAssignment } from "../hooks/useStaffAssignment";
 import { useSurgeonAssignment } from "../hooks/useSurgeonAssignment";
 import { usePreop } from "../hooks/usePreop";
 import { useStaff } from "../../staff/hooks/useStaff";
+import { useAuthContext } from "../../../context/AuthContext";
+import { ROLES } from "../../../shared/constants/roles";
 
 import StaffSection from "../components/StaffSection";
 import PreOpSection from "../components/PreOpSection";
@@ -19,6 +21,8 @@ import ImplantSection from "../components/ImplantSection";
 import SurgeryEndModal from "../components/SurgeryEndModal";
 
 const OperationMonitoring = () => {
+    const { user } = useAuthContext();
+    const role = user?.role;
     const { operationId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -46,12 +50,59 @@ const OperationMonitoring = () => {
     const [assignedSurgeons, setAssignedSurgeons] = useState([]);
     const [availableStaff, setAvailableStaff] = useState([]);
     const [availableSurgeons, setAvailableSurgeons] = useState([]);
-    const [activeSection, setActiveSection] = useState("STAFF");
 
     const [surgeryStatus, setSurgeryStatus] = useState(null);
     const [preopStatus, setPreopStatus] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isEndModalOpen, setIsEndModalOpen] = useState(false);
+
+    // Define all possible sections
+    const allSections = [
+        { id: "STAFF", label: "Assigned Staff", icon: "fa-solid fa-users" },
+        { id: "PRE_OP", label: "Pre-OP Prep", icon: "fa-solid fa-clipboard-check" },
+        { id: "INTRA_OP", label: "Intra-OP Monitor", icon: "fa-solid fa-heart-pulse" },
+        { id: "IV_FLUIDS", label: "IV Fluids", icon: "fa-solid fa-vial" },
+        { id: "ANESTHESIA_DRUGS", label: "Anesthesia Drugs", icon: "fa-solid fa-syringe" },
+        { id: "VITALS", label: "Patient Vitals", icon: "fa-solid fa-gauge-high" },
+        { id: "NOTES", label: "Operation Notes", icon: "fa-solid fa-file-medical" },
+        { id: "CONSUMABLES", label: "Consumables Used", icon: "fa-solid fa-box-archive" },
+        { id: "EQUIPMENT", label: "Equipment Usage", icon: "fa-solid fa-laptop-medical" },
+        { id: "IMPLANTS", label: "Implants", icon: "fa-solid fa-bone" }
+    ];
+
+    // Filter sections based on role
+    const sections = (() => {
+        if (role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN) return allSections;
+        
+        switch (role) {
+            case ROLES.SURGEON:
+                return allSections.filter(s => ["PRE_OP", "INTRA_OP", "NOTES", "IMPLANTS", "STAFF"].includes(s.id));
+            case ROLES.ANESTHESIOLOGIST:
+                return allSections.filter(s => ["PRE_OP", "ANESTHESIA_DRUGS", "IV_FLUIDS", "VITALS", "STAFF"].includes(s.id));
+            case ROLES.NURSE:
+            case ROLES.SCRUB_NURSE:
+            case ROLES.CIRCULATING_NURSE:
+            case ROLES.ANESTHESIA_NURSE:
+                return allSections.filter(s => ["VITALS", "NOTES", "CONSUMABLES", "EQUIPMENT", "IV_FLUIDS", "STAFF"].includes(s.id));
+            case ROLES.OT_TECHNICIAN:
+            case ROLES.SURGICAL_TECH:
+            case ROLES.ANESTHESIA_TECHNICIAN:
+                return allSections.filter(s => ["EQUIPMENT", "CONSUMABLES", "STAFF"].includes(s.id));
+            case ROLES.RECEPTIONIST:
+                return allSections.filter(s => ["STAFF"].includes(s.id));
+            default:
+                return allSections;
+        }
+    })();
+
+    const [activeSection, setActiveSection] = useState(sections[0]?.id || "STAFF");
+
+    useEffect(() => {
+        // Ensure active section is valid for this role
+        if (!sections.some(s => s.id === activeSection)) {
+            setActiveSection(sections[0]?.id || "STAFF");
+        }
+    }, [role, sections, activeSection]);
 
     const loadAllStaffData = useCallback(async () => {
         // Fetch assigned
@@ -101,7 +152,7 @@ const OperationMonitoring = () => {
 
     const handleEndSuccess = (data) => {
         refreshStatuses();
-        navigate("/admin/dashboard/operations");
+        navigate("/operations-list");
     };
 
     const handleAssignStaff = async (staffId, staffName, role) => {
@@ -163,23 +214,12 @@ const OperationMonitoring = () => {
         startTime: operationData?.startTime || new Date().toISOString()
     };
     const restrictedSections = ["INTRA_OP", "IV_FLUIDS", "ANESTHESIA_DRUGS", "VITALS", "NOTES", "CONSUMABLES", "EQUIPMENT", "IMPLANTS"];
-    const isSectionRestricted = restrictedSections.includes(activeSection);
+    // Only restrict sections that are actually in the user's available sections
+    const availableRestrictedSections = restrictedSections.filter(id => sections.some(s => s.id === id));
+    const isSectionRestricted = availableRestrictedSections.includes(activeSection);
     
     // Logic: Block if NOT emergency AND (preop not done OR surgery not started/completed)
     const isBlocked = !isEmergency && isSectionRestricted && (!isPreopCompleted || !isSurgeryStarted);
-
-    const sections = [
-        { id: "STAFF", label: "Assigned Staff", icon: "fa-solid fa-users" },
-        { id: "PRE_OP", label: "Pre-OP Prep", icon: "fa-solid fa-clipboard-check" },
-        { id: "INTRA_OP", label: "Intra-OP Monitor", icon: "fa-solid fa-heart-pulse" },
-        { id: "IV_FLUIDS", label: "IV Fluids", icon: "fa-solid fa-vial" },
-        { id: "ANESTHESIA_DRUGS", label: "Anesthesia Drugs", icon: "fa-solid fa-syringe" },
-        { id: "VITALS", label: "Patient Vitals", icon: "fa-solid fa-gauge-high" },
-        { id: "NOTES", label: "Operation Notes", icon: "fa-solid fa-file-medical" },
-        { id: "CONSUMABLES", label: "Consumables Used", icon: "fa-solid fa-box-archive" },
-        { id: "EQUIPMENT", label: "Equipment Usage", icon: "fa-solid fa-laptop-medical" },
-        { id: "IMPLANTS", label: "Implants", icon: "fa-solid fa-bone" }
-    ];
 
     return (
         <div style={{ padding: "1.5rem", height: "100%", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -224,7 +264,7 @@ const OperationMonitoring = () => {
                         <div style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.875rem" }}>{patientData.surgeon}</div>
                     </div>
                     
-                    {isSurgeryInProgress && (
+                    {isSurgeryInProgress && (role === ROLES.ADMIN || role === ROLES.SURGEON) && (
                         <button 
                             onClick={() => setIsEndModalOpen(true)}
                             className="end-surgery-btn"
@@ -362,7 +402,7 @@ const OperationMonitoring = () => {
                                 }
                             </p>
                             
-                            {isPreopCompleted && !isSurgeryInProgress && (
+                            {isPreopCompleted && !isSurgeryInProgress && (role === ROLES.ADMIN || role === ROLES.SURGEON) && (
                                 <button 
                                     onClick={handleStartSurgery}
                                     style={{

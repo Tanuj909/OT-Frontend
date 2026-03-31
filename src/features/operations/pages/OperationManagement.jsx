@@ -4,6 +4,8 @@ import { useOperations } from "../hooks/useOperations";
 import { useAdmin } from "../../admin/hooks/useAdmin";
 import { useOtRoom } from "../../admin/hooks/useOtroom";
 import { useStaff } from "../../staff/hooks/useStaff";
+import { useAuthContext } from "../../../context/AuthContext";
+import { ROLES } from "../../../shared/constants/roles";
 
 const SURGERY_STATUS = [
     "REQUESTED", "SCHEDULED", "CONFIRMED", "IN_PROGRESS", 
@@ -11,6 +13,7 @@ const SURGERY_STATUS = [
 ];
 
 const OperationManagement = () => {
+    const { user } = useAuthContext();
     const { 
         loading, 
         error, 
@@ -28,8 +31,6 @@ const OperationManagement = () => {
     const [selectedStatus, setSelectedStatus] = useState("IN_PROGRESS");
     const [searchTerm, setSearchTerm] = useState("");
 
-
-
     const loadData = useCallback(() => {
         if (activeTab === "ALL") {
             fetchAllOperations();
@@ -44,11 +45,14 @@ const OperationManagement = () => {
 
     useEffect(() => {
         loadData();
-        fetchOTs();
-        fetchAllStaff();
-    }, [loadData, fetchOTs, fetchAllStaff]);
-
-
+        
+        // IMPORTANT: Clinical staff (Surgeons, Nurses, Techs) may not have permission 
+        // to view the entire staff registry or all OT theaters, leading to 401 errors.
+        if (user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN) {
+            fetchOTs();
+            fetchAllStaff();
+        }
+    }, [loadData, fetchOTs, fetchAllStaff, user?.role]);
 
     const getStatusStyle = (status) => {
         switch(status) {

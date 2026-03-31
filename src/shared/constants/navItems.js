@@ -1,14 +1,55 @@
 import { ROLES } from "./roles";
 
+const ALL_STAFF = [
+  ROLES.SUPER_ADMIN, 
+  ROLES.ADMIN, 
+  ROLES.RECEPTIONIST, 
+  ROLES.SURGEON, 
+  ROLES.ANESTHESIOLOGIST, 
+  ROLES.SCRUB_NURSE, 
+  ROLES.CIRCULATING_NURSE, 
+  ROLES.ANESTHESIA_NURSE, 
+  ROLES.OT_TECHNICIAN, 
+  ROLES.SURGICAL_TECH, 
+  ROLES.ANESTHESIA_TECHNICIAN, 
+  ROLES.NURSE, 
+  ROLES.STAFF,
+  ROLES.DOCTOR
+];
+
+const CLINICAL_STAFF = [
+    ROLES.SURGEON, 
+    ROLES.ANESTHESIOLOGIST, 
+    ROLES.SCRUB_NURSE, 
+    ROLES.CIRCULATING_NURSE, 
+    ROLES.ANESTHESIA_NURSE, 
+    ROLES.OT_TECHNICIAN, 
+    ROLES.SURGICAL_TECH, 
+    ROLES.ANESTHESIA_TECHNICIAN, 
+    ROLES.NURSE,
+    ROLES.DOCTOR
+];
+
 export const NAV_ITEMS = [
-  // ─── SUPER ADMIN ──────────────────────────────────────────
+  // ─── SHARED / DASHBOARD ───────────────────────────────────
   {
     id: "dashboard",
     label: "Dashboard",
     path: "/dashboard",
     icon: "fa-solid fa-chart-pie",
-    allowedRoles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.RECEPTIONIST, ROLES.SURGEON, ROLES.NURSE, ROLES.STAFF],
+    allowedRoles: ALL_STAFF,
   },
+
+  // ─── CLINICAL PANEL (SURGEON, ANESTHESIA, NURSE, TECH) ────
+  {
+    id: "my-operations",
+    label: "My Operations",
+    path: "/operations-list",
+    icon: "fa-solid fa-notes-medical",
+    allowedRoles: CLINICAL_STAFF,
+  },
+
+  // ─── SUPER ADMIN ──────────────────────────────────────────
   {
     id: "hospitals",
     label: "Hospitals",
@@ -40,6 +81,13 @@ export const NAV_ITEMS = [
 
   // ─── ADMIN ────────────────────────────────────────────────
   {
+    id: "admin-operations",
+    label: "Operations registry",
+    path: "/operations-list", 
+    icon: "fa-solid fa-scalpel",
+    allowedRoles: [ROLES.ADMIN],
+  },
+  {
     id: "ots",
     label: "Theaters",
     path: "/ot-management",
@@ -59,13 +107,6 @@ export const NAV_ITEMS = [
     path: "/staff-management",
     icon: "fa-solid fa-users",
     allowedRoles: [ROLES.ADMIN],
-  },
-  {
-    id: "ipd",
-    label: "IPD Requests",
-    path: "/operation-management",
-    icon: "fa-solid fa-person-walking-arrow-right",
-    allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
   },
   {
     id: "catalog",
@@ -89,13 +130,6 @@ export const NAV_ITEMS = [
     allowedRoles: [ROLES.ADMIN],
   },
   {
-    id: "operations",
-    label: "Operations",
-    path: "/operations-list", 
-    icon: "fa-solid fa-scalpel",
-    allowedRoles: [ROLES.ADMIN],
-  },
-  {
     id: "reports",
     label: "Reports",
     path: "/reports",
@@ -105,8 +139,22 @@ export const NAV_ITEMS = [
 
   // ─── RECEPTIONIST ─────────────────────────────────────────
   {
-    id: "schedule",
-    label: "Schedule",
+    id: "ipd",
+    label: "Scheduling",
+    path: "/operation-management",
+    icon: "fa-solid fa-calendar-days",
+    allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
+  },
+  {
+    id: "assigned-ops",
+    label: "Staff Assignment",
+    path: "/operations-list",
+    icon: "fa-solid fa-user-check",
+    allowedRoles: [ROLES.RECEPTIONIST],
+  },
+  {
+    id: "rooms-reception",
+    label: "Room Registry",
     path: "/room-management",
     icon: "fa-regular fa-calendar",
     allowedRoles: [ROLES.RECEPTIONIST],
