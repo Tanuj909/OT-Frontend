@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useAnesthesiaDrugs } from "../hooks/useAnesthesiaDrugs";
+import { useCatalog } from "../../catalog/hooks/useCatalog";
 import { DRUG_TYPES, DRUG_ROUTES } from "../constants/anesthesiaDrug.endpoint";
 
 const AnesthesiaDrugSection = () => {
@@ -13,14 +14,20 @@ const AnesthesiaDrugSection = () => {
         removeDrug, 
         getDrugSummary 
     } = useAnesthesiaDrugs();
+    const { fetchByType, loading: catalogLoading } = useCatalog();
 
     const [drugs, setDrugs] = useState([]);
     const [summary, setSummary] = useState(null);
     const [editingDrug, setEditingDrug] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+
+    const [catalogItems, setCatalogItems] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
     
     const [formData, setFormData] = useState({
+        catalogItemId: "",
         drugName: "",
         dose: "",
         doseUnit: "mg",
@@ -32,9 +39,10 @@ const AnesthesiaDrugSection = () => {
     });
 
     const refreshData = useCallback(async () => {
-        const [drugsRes, summaryRes] = await Promise.all([
+        const [drugsRes, summaryRes, catalogRes] = await Promise.all([
             getDrugs(operationId),
-            getDrugSummary(operationId)
+            getDrugSummary(operationId),
+            fetchByType("ANESTHESIA_DRUG") // CORRECTED from ANAESTHESIA_DRUG
         ]);
         
         if (drugsRes.success) {
@@ -42,7 +50,8 @@ const AnesthesiaDrugSection = () => {
             setDrugs(Array.isArray(drugsData) ? drugsData : []);
         }
         if (summaryRes.success) setSummary(summaryRes.data);
-    }, [operationId, getDrugs, getDrugSummary]);
+        if (catalogRes.success) setCatalogItems(catalogRes.data || []);
+    }, [operationId, getDrugs, getDrugSummary, fetchByType]);
 
     useEffect(() => {
         refreshData();
@@ -55,14 +64,22 @@ const AnesthesiaDrugSection = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.catalogItemId) return alert("Select a drug from the catalog.");
+
+        const payload = {
+            ...formData,
+            dose: Number(formData.dose)
+        };
+
         const res = editingDrug 
-            ? await updateDrug(operationId, editingDrug.id, formData)
-            : await addDrug(operationId, formData);
+            ? await updateDrug(operationId, editingDrug.id, payload)
+            : await addDrug(operationId, payload);
             
         if (res.success) {
             setIsFormOpen(false);
             setEditingDrug(null);
             setFormData({
+                catalogItemId: "",
                 drugName: "",
                 dose: "",
                 doseUnit: "mg",
@@ -81,6 +98,7 @@ const AnesthesiaDrugSection = () => {
     const handleEdit = (drug) => {
         setEditingDrug(drug);
         setFormData({
+            catalogItemId: drug.catalogItemId || "",
             drugName: drug.drugName,
             dose: drug.dose,
             doseUnit: drug.doseUnit,
@@ -98,6 +116,11 @@ const AnesthesiaDrugSection = () => {
         const res = await removeDrug(operationId, drugId);
         if (res.success) refreshData();
     };
+
+    const filteredCatalog = catalogItems.filter(item => 
+        (item.itemName || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (item.itemCode || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -117,7 +140,7 @@ const AnesthesiaDrugSection = () => {
                         {editingDrug ? "Edit Medication" : "Log New Medication"}
                     </h3>
                     <button 
-                        onClick={() => { setIsFormOpen(!isFormOpen); if(!isFormOpen) { setEditingDrug(null); } }}
+                        onClick={() => { setIsFormOpen(!isFormOpen); if(!isFormOpen) { setEditingDrug(null); setFormData({ catalogItemId: "", drugName: "", dose: "", doseUnit: "mg", route: "IV", drugType: "INDUCTION", administeredAt: new Date().toISOString().slice(0, 16), endTime: "", notes: "" }); } }}
                         style={{ padding: "0.4rem 0.8rem", fontSize: "0.75rem", fontWeight: "700", border: "none", borderRadius: "6px", backgroundColor: isFormOpen ? "#e2e8f0" : "var(--hospital-blue)", color: isFormOpen ? "#475569" : "white", cursor: "pointer" }}
                     >
                         {isFormOpen ? "Close Form" : "Add Medication"}
@@ -126,7 +149,28 @@ const AnesthesiaDrugSection = () => {
 
                 {isFormOpen && (
                     <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", alignItems: "flex-end" }}>
-                        <FormInput label="Drug Name" name="drugName" value={formData.drugName} onChange={handleInputChange} placeholder="e.g. Propofol" />
+                        <div>
+                            <label style={labelStyle}>Selected Medication</label>
+                            <div style={{ display: "flex", gap: "0.3rem" }}>
+                                <div style={{ 
+                                    flex: 1, padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0", 
+                                    backgroundColor: editingDrug ? "#f1f5f9" : "white", fontWeight: "700", fontSize: "0.8rem", 
+                                    color: formData.drugName ? "#1e293b" : "#94a3b8",
+                                    display: "flex", alignItems: "center", minHeight: "34px"
+                                }}>
+                                    {formData.drugName || "Select drug..."}
+                                </div>
+                                {!editingDrug && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsModalOpen(true)}
+                                        style={{ padding: "0 0.6rem", fontSize: "0.7rem", fontWeight: "800", border: "1px solid var(--hospital-blue)", background: "white", color: "var(--hospital-blue)", borderRadius: "6px", cursor: "pointer" }}
+                                    >
+                                        Browse
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 0.8fr", gap: "0.4rem" }}>
                             <FormInput label="Dose" name="dose" type="number" value={formData.dose} onChange={handleInputChange} />
                             <FormInput label="Unit" name="doseUnit" type="select" options={["mg", "mcg", "ml", "g"]} value={formData.doseUnit} onChange={handleInputChange} />
@@ -135,8 +179,8 @@ const AnesthesiaDrugSection = () => {
                         <FormInput label="Route" name="route" type="select" options={DRUG_ROUTES} value={formData.route} onChange={handleInputChange} />
                         <FormInput label="Start Time" name="administeredAt" type="datetime-local" value={formData.administeredAt} onChange={handleInputChange} />
                         <FormInput label="End Time" name="endTime" type="datetime-local" value={formData.endTime} onChange={handleInputChange} />
-                        <button type="submit" style={{ padding: "0.70rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "8px", fontWeight: "800", cursor: "pointer" }}>
-                            {editingDrug ? "Update" : "Log Drug"}
+                        <button type="submit" disabled={loading} style={{ padding: "0.70rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "8px", fontWeight: "1000", cursor: "pointer" }}>
+                            {loading ? "Saving..." : (editingDrug ? "Update" : "Log Drug")}
                         </button>
                     </form>
                 )}
@@ -151,7 +195,7 @@ const AnesthesiaDrugSection = () => {
                             <th style={thStyle}>Dosage</th>
                              <th style={thStyle}>Type/Route</th>
                             <th style={thStyle}>Timeline</th>
-                            <th style={thStyle}>Actions</th>
+                            <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -178,8 +222,8 @@ const AnesthesiaDrugSection = () => {
                                             </div>
                                         )}
                                     </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ display: "flex", gap: "0.4rem" }}>
+                                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                                        <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
                                             <button onClick={() => handleEdit(drug)} style={miniBtn("#2563eb")}><i className="fa-solid fa-edit"></i></button>
                                             <button onClick={() => handleRemove(drug.id)} style={miniBtn("#ef4444")}><i className="fa-solid fa-trash"></i></button>
                                         </div>
@@ -191,19 +235,74 @@ const AnesthesiaDrugSection = () => {
                 </table>
             </div>
 
-            {/* 🔽 Anesthesia Summary (Accordion) */}
-            <div style={{ border: "1px solid #e2e8f0", borderRadius: "12px", overflow: "hidden", backgroundColor: "white" }}>
-                <div 
-                    onClick={() => setIsSummaryOpen(!isSummaryOpen)}
-                    style={{ 
-                        display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", 
-                        backgroundColor: "#f8fafc", cursor: "pointer", borderBottom: isSummaryOpen ? "1px solid #e2e8f0" : "none"
-                    }}
-                >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <i className="fa-solid fa-clipboard-list" style={{ color: "var(--hospital-blue)" }}></i>
-                        <h4 style={{ fontSize: "0.85rem", fontWeight: "800", margin: 0, color: "#334155" }}>Medication Summary Details</h4>
+            {/* 🏥 Catalog Selection Modal */}
+            {isModalOpen && (
+                <div style={modalOverlayStyle}>
+                    <div style={modalContentStyle}>
+                        <div style={modalHeaderStyle}>
+                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "800" }}>Select Anesthesia Medication</h3>
+                            <button onClick={() => setIsModalOpen(false)} style={closeBtnStyle}><i className="fa-solid fa-xmark"></i></button>
+                        </div>
+                        
+                        <div style={{ padding: "1.25rem" }}>
+                            <div style={{ position: "relative", marginBottom: "1rem" }}>
+                                <i className="fa-solid fa-magnifying-glass" style={iconInsideStyle}></i>
+                                <input 
+                                    type="text" 
+                                    placeholder="Search by drug name or code..." 
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    style={{ width: "100%", padding: "0.6rem 0.6rem 0.6rem 2.2rem", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontWeight: "700", fontSize: "0.85rem" }}
+                                />
+                            </div>
+
+                            <div style={{ maxHeight: "350px", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                    <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 1 }}>
+                                        <tr>
+                                            <th style={thStyleCompact}>Medication Name</th>
+                                            <th style={thStyleCompact}>Category</th>
+                                            <th style={{ ...thStyleCompact, textAlign: "right" }}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredCatalog.length === 0 ? (
+                                            <tr><td colSpan="3" style={{ padding: "2rem", textAlign: "center", color: "#94a3b8", fontWeight: "700" }}>{catalogLoading ? "Searching..." : "No items found."}</td></tr>
+                                        ) : (
+                                            filteredCatalog.map(item => (
+                                                <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                                    <td style={tdStyleCompact}><div style={{ fontWeight: "800" }}>{item.itemName}</div><div style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{item.itemCode}</div></td>
+                                                    <td style={tdStyleCompact}>{item.category}</td>
+                                                    <td style={{ ...tdStyleCompact, textAlign: "right" }}>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setFormData(prev => ({ 
+                                                                    ...prev, 
+                                                                    catalogItemId: item.id,
+                                                                    drugName: item.itemName
+                                                                }));
+                                                                setIsModalOpen(false);
+                                                            }}
+                                                            style={{ padding: "0.3rem 0.75rem", backgroundColor: "var(--hospital-blue)", color: "white", border: "none", borderRadius: "6px", fontWeight: "800", cursor: "pointer", fontSize: "0.7rem" }}
+                                                        >
+                                                            Select
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            )}
+
+            {/* 🔽 Anesthesia Summary Accordion */}
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: "12px", overflow: "hidden", backgroundColor: "white" }}>
+                <div onClick={() => setIsSummaryOpen(!isSummaryOpen)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", backgroundColor: "#f8fafc", cursor: "pointer", borderBottom: isSummaryOpen ? "1px solid #e2e8f0" : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><i className="fa-solid fa-clipboard-list" style={{ color: "var(--hospital-blue)" }}></i><h4 style={{ fontSize: "0.85rem", fontWeight: "800", margin: 0, color: "#334155" }}>Medication Summary Details</h4></div>
                     <i className={`fa-solid fa-chevron-${isSummaryOpen ? "up" : "down"}`} style={{ color: "#64748b", fontSize: "0.8rem" }}></i>
                 </div>
                 {isSummaryOpen && (
@@ -217,20 +316,14 @@ const AnesthesiaDrugSection = () => {
                                 <div style={{ padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                                     <div style={{ fontSize: "0.65rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase", marginBottom: "0.5rem" }}>Breakdown by Type</div>
                                     {Object.entries(summary?.byDrugType || {}).map(([type, val]) => (
-                                        <div key={type} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "700", padding: "0.2rem 0" }}>
-                                            <span>{type}:</span>
-                                            <span style={{ color: "var(--hospital-blue)" }}>{safeCount(val)}</span>
-                                        </div>
+                                        <div key={type} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "700", padding: "0.2rem 0" }}><span>{type}:</span><span style={{ color: "var(--hospital-blue)" }}>{safeCount(val)}</span></div>
                                     ))}
                                 </div>
                             </div>
                             <div style={{ padding: "0.75rem", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                                 <div style={{ fontSize: "0.65rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase", marginBottom: "0.5rem" }}>Total Dosage by Drug</div>
                                 {Object.entries(summary?.totalDoseByDrug || {}).map(([drug, dose]) => (
-                                    <div key={drug} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "700", padding: "0.2rem 0", borderBottom: "1px dashed #e2e8f0" }}>
-                                        <span>{drug}</span>
-                                        <span style={{ color: "#ef4444" }}>{typeof dose === "object" ? (dose?.totalDose ?? JSON.stringify(dose)) : dose}</span>
-                                    </div>
+                                    <div key={drug} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "700", padding: "0.2rem 0", borderBottom: "1px dashed #e2e8f0" }}><span>{drug}</span><span style={{ color: "#ef4444" }}>{typeof dose === "object" ? (dose?.totalDose ?? JSON.stringify(dose)) : dose}</span></div>
                                 ))}
                             </div>
                         </div>
@@ -241,7 +334,6 @@ const AnesthesiaDrugSection = () => {
     );
 };
 
-// Safe count extractor: handles arrays (returns .length), numbers, or defaults to 0
 const safeCount = (val) => {
     if (Array.isArray(val)) return val.length;
     if (typeof val === "number") return val;
@@ -249,14 +341,10 @@ const safeCount = (val) => {
     return val || 0;
 };
 
-// --- Helpers ---
 const SmallSummaryCard = ({ label, value, icon, color }) => (
     <div style={{ padding: "0.75rem 1rem", backgroundColor: "white", borderRadius: "10px", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <i className={icon} style={{ color, fontSize: "1rem" }}></i>
-        <div>
-            <div style={{ fontSize: "0.6rem", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase" }}>{label}</div>
-            <div style={{ fontSize: "0.9rem", fontWeight: "900", color: "#1e293b" }}>{value}</div>
-        </div>
+        <div><div style={{ fontSize: "0.6rem", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase" }}>{label}</div><div style={{ fontSize: "0.9rem", fontWeight: "900", color: "#1e293b" }}>{value}</div></div>
     </div>
 );
 
@@ -275,6 +363,14 @@ const FormInput = ({ label, name, type = "text", value, onChange, options, place
 
 const thStyle = { textAlign: "left", padding: "0.75rem 1rem", fontSize: "0.65rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" };
 const tdStyle = { padding: "0.75rem 1rem", fontSize: "0.8rem", fontWeight: "700" };
-const miniBtn = (color) => ({ width: "24px", height: "24px", borderRadius: "5px", border: "none", backgroundColor: `${color}15`, color: color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem" });
+const miniBtn = (color) => ({ width: "24px", height: "24px", borderRadius: "5px", border: "none", backgroundColor: `${color}15`, color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem" });
+const thStyleCompact = { textAlign: "left", padding: "0.7rem 1rem", fontSize: "0.6rem", fontWeight: "900", color: "#64748b", textTransform: "uppercase" };
+const tdStyleCompact = { padding: "0.7rem 1rem", fontSize: "0.8rem" };
+const labelStyle = { display: "block", fontSize: "0.7rem", fontWeight: "800", marginBottom: "0.3rem", color: "#64748b" };
+const iconInsideStyle = { position: "absolute", left: "0.9rem", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.9rem", zIndex: 1 };
+const modalOverlayStyle = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 };
+const modalContentStyle = { backgroundColor: "white", borderRadius: "20px", width: "95%", maxWidth: "550px", maxHeight: "90vh", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", overflow: "hidden" };
+const modalHeaderStyle = { padding: "1.25rem", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "white" };
+const closeBtnStyle = { background: "none", border: "none", fontSize: "1.5rem", color: "#64748b", cursor: "pointer" };
 
 export default AnesthesiaDrugSection;

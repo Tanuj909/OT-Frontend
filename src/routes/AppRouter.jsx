@@ -14,6 +14,7 @@ import OTManagement from "../features/admin/pages/OTManagement";
 import OTRoomManagement from "../features/admin/pages/OTRoomManagement";
 import AllRooms from "../features/admin/pages/AllRooms";
 import OtRoom from "../features/admin/pages/OtRoom";
+import AdminDashboard from "../features/admin/pages/AdminDashboard";
 import StaffManagement from "../features/staff/pages/StaffManagement";
 import StaffSchedulePage from "../features/staff/pages/StaffSchedulePage";
 import StaffAvailabilityPage from "../features/staff/pages/StaffAvailabilityPage";
@@ -53,7 +54,7 @@ const AppRouter = () => {
                 {/* Protected */}
                 <Route element={<ProtectedRoute />}>
                     <Route element={<PageLayout><Outlet /></PageLayout>}>
-                        <Route path="/dashboard" element={<Page title="Dashboard" />} />
+                        <Route path="/dashboard" element={<AdminDashboard />} />
 
                         {/* SUPER_ADMIN Routes */}
                         <Route path="/hospital-management" element={<RoleGuard allowedRoles={[ROLES.SUPER_ADMIN]}><HospitalManagement /></RoleGuard>} />

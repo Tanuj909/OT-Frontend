@@ -36,7 +36,10 @@ const ConsumablesSection = () => {
         batchNumber: "",
         expiryDate: "",
         isSterile: true,
-        sterilizationDate: ""
+        sterilizationDate: "",
+        unitPrice: "",
+        discountPercent: "",
+        gstPercent: ""
     });
 
     const refreshData = useCallback(async () => {
@@ -74,7 +77,10 @@ const ConsumablesSection = () => {
             batchNumber: "",
             expiryDate: "",
             isSterile: true,
-            sterilizationDate: ""
+            sterilizationDate: "",
+            unitPrice: "",
+            discountPercent: "",
+            gstPercent: ""
         });
         setEditingItem(null);
         setSearchTerm("");
@@ -87,6 +93,9 @@ const ConsumablesSection = () => {
             ...formData,
             quantityUsed: Number(formData.quantityUsed),
             quantityWasted: Number(formData.quantityWasted),
+            unitPrice: Number(formData.unitPrice),
+            discountPercent: Number(formData.discountPercent),
+            gstPercent: Number(formData.gstPercent),
             expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : null,
             sterilizationDate: formData.sterilizationDate ? new Date(formData.sterilizationDate).toISOString() : null
         };
@@ -117,7 +126,10 @@ const ConsumablesSection = () => {
             batchNumber: item.batchNumber || "",
             expiryDate: item.expiryDate ? item.expiryDate.slice(0, 10) : "",
             isSterile: item.isSterile,
-            sterilizationDate: item.sterilizationDate ? item.sterilizationDate.slice(0, 10) : ""
+            sterilizationDate: item.sterilizationDate ? item.sterilizationDate.slice(0, 10) : "",
+            unitPrice: item.unitPrice?.toString() || "",
+            discountPercent: item.discountPercent?.toString() || "",
+            gstPercent: item.gstPercent?.toString() || ""
         });
         setIsFormOpen(true);
     };
@@ -210,7 +222,10 @@ const ConsumablesSection = () => {
                                                             ...prev, 
                                                             consumableName: item.itemName, 
                                                             consumableCode: item.itemCode,
-                                                            unitOfMeasure: item.unit || "PCS" 
+                                                            unitOfMeasure: item.unit || "PCS",
+                                                            unitPrice: item.basePrice?.toString() || "0",
+                                                            discountPercent: item.discountPercent?.toString() || "0",
+                                                            gstPercent: item.gstPercent?.toString() || "0"
                                                         }));
                                                         setSearchTerm(item.itemName);
                                                         setShowCatalogList(false);
@@ -239,17 +254,20 @@ const ConsumablesSection = () => {
                         {/* <FormInput label="Expiry Date" name="expiryDate" type="date" value={formData.expiryDate} onChange={handleInputChange} /> */}
                         <FormInput label="Qty Wasted" name="quantityWasted" type="number" value={formData.quantityWasted} onChange={handleInputChange} placeholder="0" />
                         
-                        <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
-                            <div style={{ flex: 2 }}>
-                                <FormInput label="Sterilization Date" name="sterilizationDate" type="date" value={formData.sterilizationDate} onChange={handleInputChange} disabled={!formData.isSterile} />
-                            </div>
-                            <div style={{ flex: 1, paddingBottom: "0.5rem" }}>
-                                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", cursor: "pointer" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                            <FormInput label="Sterilization Date" name="sterilizationDate" type="date" value={formData.sterilizationDate} onChange={handleInputChange} disabled={!formData.isSterile} />
+                            <div style={{ paddingBottom: "0.5rem" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", cursor: "pointer", marginTop: "1.2rem" }}>
                                     <input type="checkbox" name="isSterile" checked={formData.isSterile} onChange={handleInputChange} />
                                     Sterile Item
                                 </label>
                             </div>
                         </div>
+
+                        {/* Pricing Row (Read-only) */}
+                        <FormInput label="Unit Price (₹)" name="unitPrice" type="number" value={formData.unitPrice} onChange={handleInputChange} placeholder="0.00" disabled={true} />
+                        <FormInput label="Disc. %" name="discountPercent" type="number" value={formData.discountPercent} onChange={handleInputChange} placeholder="0" disabled={true} />
+                        <FormInput label="GST %" name="gstPercent" type="number" value={formData.gstPercent} onChange={handleInputChange} placeholder="0" disabled={true} />
 
                         <button 
                             type="submit" 
@@ -297,6 +315,7 @@ const ConsumablesSection = () => {
                                     </td>
                                     <td style={tdStyle}>
                                         <div style={{ fontSize: "0.8rem", fontWeight: "800" }}>Used: {item.quantityUsed} {item.unitOfMeasure}</div>
+                                        <div style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: "700" }}>₹{item.unitPrice || 0} / unit</div>
                                         <div style={{ fontSize: "0.65rem", color: "#ef4444", fontWeight: "700" }}>Wasted: {item.quantityWasted}</div>
                                     </td>
                                     <td style={tdStyle}>
