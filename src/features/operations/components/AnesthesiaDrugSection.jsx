@@ -12,7 +12,8 @@ const AnesthesiaDrugSection = () => {
         getDrugs, 
         updateDrug, 
         removeDrug, 
-        getDrugSummary 
+        getDrugSummary,
+        updateDrugEndTime
     } = useAnesthesiaDrugs();
     const { fetchByType, loading: catalogLoading } = useCatalog();
 
@@ -109,6 +110,15 @@ const AnesthesiaDrugSection = () => {
             notes: drug.notes || ""
         });
         setIsFormOpen(true);
+    };
+
+    const handleSetEndTime = async (drugId) => {
+        const res = await updateDrugEndTime(operationId, drugId);
+        if (res.success) {
+            refreshData();
+        } else {
+            alert(res.message);
+        }
     };
 
     const handleRemove = async (drugId) => {
@@ -224,6 +234,15 @@ const AnesthesiaDrugSection = () => {
                                     </td>
                                     <td style={{ ...tdStyle, textAlign: "right" }}>
                                         <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                                            {!drug.endTime && (
+                                                <button 
+                                                    onClick={() => handleSetEndTime(drug.id)} 
+                                                    title="Set End Time"
+                                                    style={{ ...miniBtn("#16a34a"), width: "auto", padding: "0 0.5rem" }}
+                                                >
+                                                    <i className="fa-solid fa-stop" style={{ marginRight: "0.2rem" }}></i> Stop
+                                                </button>
+                                            )}
                                             <button onClick={() => handleEdit(drug)} style={miniBtn("#2563eb")}><i className="fa-solid fa-edit"></i></button>
                                             <button onClick={() => handleRemove(drug.id)} style={miniBtn("#ef4444")}><i className="fa-solid fa-trash"></i></button>
                                         </div>

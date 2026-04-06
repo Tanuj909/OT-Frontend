@@ -3,7 +3,8 @@ export const ANESTHESIA_DRUG_ENDPOINTS = {
     GET_ALL: "/anesthesia-drugs/:operationId/get",
     UPDATE: "/anesthesia-drugs/:operationId/update/:drugId",
     REMOVE: "/anesthesia-drugs/:operationId/remove/:drugId",
-    SUMMARY: "/anesthesia-drugs/:operationId/summary"
+    SUMMARY: "/anesthesia-drugs/:operationId/summary",
+    UPDATE_END_TIME: "/anesthesia-drugs/:operationId/end-time/:drugId"
 };
 
 export const DRUG_TYPES = [

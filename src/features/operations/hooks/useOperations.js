@@ -7,7 +7,8 @@ import {
     startSurgeryApi,
     checkSurgeryStatusApi,
     getSurgeryReadinessApi,
-    getOperationReportApi
+    getOperationReportApi,
+    shiftSurgeryRoomApi
 } from "../services/operationService";
 
 export const useOperations = () => {
@@ -124,6 +125,20 @@ export const useOperations = () => {
         }
     }, []);
 
+    const shiftRoom = useCallback(async (id, newRoomId) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await shiftSurgeryRoomApi(id, newRoomId);
+            return { success: true, message: res.data?.message || "Room shifted successfully" };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to shift room.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
@@ -135,6 +150,7 @@ export const useOperations = () => {
         startSurgery,
         checkSurgeryStatus,
         fetchSurgeryReadiness,
-        fetchOperationReport
+        fetchOperationReport,
+        shiftRoom
     };
 };

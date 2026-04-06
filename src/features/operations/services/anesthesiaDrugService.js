@@ -15,5 +15,8 @@ export const anesthesiaDrugService = {
         axiosInstance.delete(ANESTHESIA_DRUG_ENDPOINTS.REMOVE.replace(":operationId", opId).replace(":drugId", drugId)),
     
     getDrugSummary: (opId) => 
-        axiosInstance.get(ANESTHESIA_DRUG_ENDPOINTS.SUMMARY.replace(":operationId", opId))
+        axiosInstance.get(ANESTHESIA_DRUG_ENDPOINTS.SUMMARY.replace(":operationId", opId)),
+
+    updateDrugEndTime: (opId, drugId) =>
+        axiosInstance.patch(ANESTHESIA_DRUG_ENDPOINTS.UPDATE_END_TIME.replace(":operationId", opId).replace(":drugId", drugId))
 };

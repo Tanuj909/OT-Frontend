@@ -4,6 +4,8 @@ import { useAdmin } from "../../../features/admin/hooks/useAdmin";
 import { useOtRoom } from "../../../features/admin/hooks/useOtroom";
 import { useStaff } from "../../../features/staff/hooks/useStaff";
 import { useSurgeonAssignment } from "../../../features/operations/hooks/useSurgeonAssignment";
+import { useAuthContext } from "../../../context/AuthContext";
+import { ROLES } from "../../../shared/constants/roles";
 
 const IpdRequests = () => {
     const { 
@@ -18,6 +20,7 @@ const IpdRequests = () => {
     const { ots, fetchOTs } = useAdmin();
     const { rooms, fetchRoomsByTheater } = useOtRoom();
     const { staffList, fetchAllStaff } = useStaff();
+    const { user } = useAuthContext();
     const [availableSurgeons, setAvailableSurgeons] = useState([]);
 
     const [searchTerm, setSearchTerm] = useState("");
@@ -37,14 +40,16 @@ const IpdRequests = () => {
 
     useEffect(() => {
         fetchRequestedOperations();
-        fetchOTs();
-        fetchAllStaff();
-        const loadSurgeons = async () => {
-            const res = await fetchAvailableSurgeons();
-            if (res.success) setAvailableSurgeons(res.data);
-        };
-        loadSurgeons();
-    }, [fetchRequestedOperations, fetchOTs, fetchAllStaff, fetchAvailableSurgeons]);
+        if (user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN) {
+            fetchOTs();
+            fetchAllStaff();
+            const loadSurgeons = async () => {
+                const res = await fetchAvailableSurgeons();
+                if (res.success) setAvailableSurgeons(res.data);
+            };
+            loadSurgeons();
+        }
+    }, [fetchRequestedOperations, fetchOTs, fetchAllStaff, fetchAvailableSurgeons, user?.role]);
 
     const handleTheaterChange = (e) => {
         const theaterId = e.target.value;

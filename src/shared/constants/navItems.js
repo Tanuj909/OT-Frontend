@@ -14,7 +14,8 @@ const ALL_STAFF = [
   ROLES.ANESTHESIA_TECHNICIAN, 
   ROLES.NURSE, 
   ROLES.STAFF,
-  ROLES.DOCTOR
+  ROLES.DOCTOR,
+  ROLES.BILLING_INCHARGE
 ];
 
 const CLINICAL_STAFF = [
@@ -85,7 +86,7 @@ export const NAV_ITEMS = [
     label: "Operations registry",
     path: "/operations-list", 
     icon: "fa-solid fa-scalpel",
-    allowedRoles: [ROLES.ADMIN],
+    allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST, ROLES.BILLING_INCHARGE],
   },
   {
     id: "ots",
@@ -144,13 +145,6 @@ export const NAV_ITEMS = [
     path: "/operation-management",
     icon: "fa-solid fa-calendar-days",
     allowedRoles: [ROLES.ADMIN, ROLES.RECEPTIONIST],
-  },
-  {
-    id: "assigned-ops",
-    label: "Staff Assignment",
-    path: "/operations-list",
-    icon: "fa-solid fa-user-check",
-    allowedRoles: [ROLES.RECEPTIONIST],
   },
   {
     id: "rooms-reception",

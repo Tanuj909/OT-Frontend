@@ -27,3 +27,6 @@ export const endSurgeryApi = (id, data) =>
 
 export const getOperationReportApi = (id) => 
     axiosInstance.get(OPERATION_ENDPOINTS.GET_REPORT.replace(":id", id));
+
+export const shiftSurgeryRoomApi = (id, newRoomId) => 
+    axiosInstance.put(`${OPERATION_ENDPOINTS.SHIFT_ROOM.replace(":id", id)}?newRoomId=${newRoomId}`);

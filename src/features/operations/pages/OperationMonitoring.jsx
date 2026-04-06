@@ -5,6 +5,8 @@ import { useStaffAssignment } from "../hooks/useStaffAssignment";
 import { useSurgeonAssignment } from "../hooks/useSurgeonAssignment";
 import { usePreop } from "../hooks/usePreop";
 import { useStaff } from "../../staff/hooks/useStaff";
+import { useAdmin } from "../../admin/hooks/useAdmin";
+import { useOtRoom } from "../../admin/hooks/useOtroom";
 import { useAuthContext } from "../../../context/AuthContext";
 import { ROLES } from "../../../shared/constants/roles";
 
@@ -32,9 +34,12 @@ const OperationMonitoring = () => {
         startSurgery, 
         checkSurgeryStatus, 
         fetchSurgeryReadiness, 
-        fetchOperationReport 
+        fetchOperationReport,
+        shiftRoom 
     } = useOperations();
     const { getPreopStatus } = usePreop();
+    const { ots, fetchOTs } = useAdmin();
+    const { rooms: theaterRooms, fetchRoomsByTheater } = useOtRoom();
 
     const { 
         loading: staffLoading, 
@@ -64,6 +69,10 @@ const OperationMonitoring = () => {
     const [surgeryReadiness, setSurgeryReadiness] = useState(null);
     const [reportData, setReportData] = useState(null);
     const [isReportOpen, setIsReportOpen] = useState(false);
+    const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+    const [selectedShiftTheater, setSelectedShiftTheater] = useState("");
+    const [selectedShiftRoom, setSelectedShiftRoom] = useState("");
+    const [isShiftingRoom, setIsShiftingRoom] = useState(false);
 
     // Define all possible sections
     const allSections = [
@@ -121,13 +130,15 @@ const OperationMonitoring = () => {
         const assignedSurgeonsRes = await fetchAssignedSurgeons(operationId);
         if (assignedSurgeonsRes.success) setAssignedSurgeons(assignedSurgeonsRes.data);
 
-        // Fetch available
-        const staffRes = await fetchAvailableStaff();
-        if (staffRes.success) setAvailableStaff(staffRes.data);
+        // Fetch available (Usually restricted to Admins)
+        if (role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN) {
+            const staffRes = await fetchAvailableStaff();
+            if (staffRes.success) setAvailableStaff(staffRes.data);
 
-        const surgeonsRes = await fetchAvailableSurgeons();
-        if (surgeonsRes.success) setAvailableSurgeons(surgeonsRes.data);
-    }, [operationId, fetchAssignedStaff, fetchAssignedSurgeons, fetchAvailableStaff, fetchAvailableSurgeons]);
+            const surgeonsRes = await fetchAvailableSurgeons();
+            if (surgeonsRes.success) setAvailableSurgeons(surgeonsRes.data);
+        }
+    }, [operationId, fetchAssignedStaff, fetchAssignedSurgeons, fetchAvailableStaff, fetchAvailableSurgeons, role]);
 
     const refreshStatuses = useCallback(async () => {
         setIsRefreshing(true);
@@ -235,6 +246,23 @@ const OperationMonitoring = () => {
             alert(res.message || "Failed to load report");
         }
     };
+
+    const handleShiftRoomSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedShiftRoom) return alert("Select a room first");
+        
+        setIsShiftingRoom(true);
+        const res = await shiftRoom(operationId, selectedShiftRoom);
+        setIsShiftingRoom(false);
+        
+        if (res.success) {
+            alert(res.message || "Room shifted successfully");
+            setIsShiftModalOpen(false);
+            window.location.reload(); // Re-fetch all or reload to reflect new location
+        } else {
+            alert(res.message || "Failed to shift room");
+        }
+    };
     const restrictedSections = ["INTRA_OP", "IV_FLUIDS", "ANESTHESIA_DRUGS", "VITALS", "NOTES", "CONSUMABLES", "EQUIPMENT", "IMPLANTS"];
     // Only restrict sections that are actually in the user's available sections
     const availableRestrictedSections = restrictedSections.filter(id => sections.some(s => s.id === id));
@@ -286,6 +314,32 @@ const OperationMonitoring = () => {
                         <div style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.875rem" }}>{patientData.surgeon}</div>
                     </div>
                     
+                    {currentSurgeryStatus === "SCHEDULED" && (
+                        <button 
+                            onClick={async () => {
+                                setIsShiftModalOpen(true);
+                                // Prevent 401 logout for non-admins by only fetching if they have permissions
+                                if (role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN) {
+                                    try { await fetchOTs(); } catch(e) {}
+                                }
+                            }}
+                            style={{ 
+                                height: "42px",
+                                padding: "0 1.25rem", borderRadius: "10px", 
+                                background: "#ffffff",
+                                color: "var(--hospital-blue)", display: "flex", alignItems: "center", gap: "0.6rem",
+                                border: "1.5px solid var(--hospital-blue)", cursor: "pointer", fontWeight: "800", fontSize: "0.75rem",
+                                textTransform: "uppercase", letterSpacing: "0.05em",
+                                transition: "all 0.2s"
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f0f7ff"}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#ffffff"}
+                        >
+                            <i className="fa-solid fa-right-left"></i>
+                            <span>Shift Room</span>
+                        </button>
+                    )}
+
                     {isSurgeryInProgress && (role === ROLES.ADMIN || role === ROLES.SURGEON) && (
                         <button 
                             onClick={() => setIsEndModalOpen(true)}
@@ -473,6 +527,68 @@ const OperationMonitoring = () => {
                 onClose={() => setIsReportOpen(false)} 
                 data={reportData}
             />
+
+            {/* Room Shifting Modal */}
+            {isShiftModalOpen && (
+                <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+                    <div className="login-card" style={{ maxWidth: "450px", width: "100%", padding: "2rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                            <h2 style={{ fontSize: "1.25rem", fontWeight: "800", margin: 0 }}>Shift Surgery Room</h2>
+                            <button onClick={() => setIsShiftModalOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.5rem" }}>
+                                <i className="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleShiftRoomSubmit}>
+                            <div style={{ marginBottom: "1.5rem" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.6rem", color: "#64748b" }}>SELECT NEW THEATER</label>
+                                <select 
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontWeight: "700" }}
+                                    value={selectedShiftTheater}
+                                    onChange={(e) => {
+                                        setSelectedShiftTheater(e.target.value);
+                                        if (e.target.value) fetchRoomsByTheater(e.target.value);
+                                    }}
+                                    required
+                                >
+                                    <option value="">Select Theater</option>
+                                    {ots.map(ot => <option key={ot.id} value={ot.id}>{ot.name}</option>)}
+                                </select>
+                            </div>
+
+                            {selectedShiftTheater && (
+                                <div style={{ marginBottom: "1.5rem" }}>
+                                    <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.6rem", color: "#64748b" }}>AVAILABLE ROOMS</label>
+                                    <select 
+                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontWeight: "700" }}
+                                        value={selectedShiftRoom}
+                                        onChange={(e) => setSelectedShiftRoom(e.target.value)}
+                                        required
+                                    >
+                                        <option value="">Select Room</option>
+                                        {theaterRooms.map(room => (
+                                            <option key={room.id} value={room.id}>{room.roomName} ({room.roomNumber})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <button 
+                                type="submit" 
+                                disabled={isShiftingRoom || !selectedShiftRoom}
+                                style={{ 
+                                    width: "100%", padding: "1rem", borderRadius: "10px", 
+                                    backgroundColor: "var(--hospital-blue)", color: "white", 
+                                    border: "none", fontWeight: "800", cursor: "pointer",
+                                    opacity: (isShiftingRoom || !selectedShiftRoom) ? 0.7 : 1
+                                }}
+                            >
+                                {isShiftingRoom ? "Processing..." : "Confirm Room Transfer"}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

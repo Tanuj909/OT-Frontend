@@ -7,5 +7,6 @@ export const OPERATION_ENDPOINTS = {
     CHECK_STATUS: "/surgery/:id/is-started",
     GET_READINESS: "/operations/:id/surgery-readiness",
     GET_REPORT: "/operations/:id/report",
-    END_SURGERY: "/operations/:id/end"
+    END_SURGERY: "/operations/:id/end",
+    SHIFT_ROOM: "/surgery/:id/shift-room"
 };

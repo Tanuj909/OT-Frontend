@@ -70,6 +70,19 @@ export const useAnesthesiaDrugs = () => {
         }
     }, []);
 
+    const updateDrugEndTime = useCallback(async (opId, drugId) => {
+        setLoading(true);
+        try {
+            const res = await anesthesiaDrugService.updateDrugEndTime(opId, drugId);
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to update drug end time");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
@@ -77,6 +90,7 @@ export const useAnesthesiaDrugs = () => {
         getDrugs,
         updateDrug,
         removeDrug,
-        getDrugSummary
+        getDrugSummary,
+        updateDrugEndTime
     };
 };

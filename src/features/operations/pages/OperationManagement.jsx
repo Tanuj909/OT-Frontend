@@ -6,6 +6,7 @@ import { useOtRoom } from "../../admin/hooks/useOtroom";
 import { useStaff } from "../../staff/hooks/useStaff";
 import { useAuthContext } from "../../../context/AuthContext";
 import { ROLES } from "../../../shared/constants/roles";
+import BillingModal from "../../billing/components/BillingModal";
 
 const SURGERY_STATUS = [
     "REQUESTED", "SCHEDULED", "CONFIRMED", "IN_PROGRESS", 
@@ -27,9 +28,11 @@ const OperationManagement = () => {
     const { rooms, fetchRoomsByTheater } = useOtRoom();
     const { staffList, fetchAllStaff } = useStaff();
 
-    const [activeTab, setActiveTab] = useState("SCHEDULED"); // SCHEDULED, IN_PROGRESS, ALL, BY_STATUS
+    const [activeTab, setActiveTab] = useState(user?.role === ROLES.RECEPTIONIST ? "ALL" : "SCHEDULED"); // SCHEDULED, IN_PROGRESS, ALL, BY_STATUS
     const [selectedStatus, setSelectedStatus] = useState("IN_PROGRESS");
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedBillingOp, setSelectedBillingOp] = useState(null);
+    const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
 
     const loadData = useCallback(() => {
         if (activeTab === "ALL") {
@@ -122,7 +125,7 @@ const OperationManagement = () => {
                         transition: "all 0.2s"
                     }}
                 >
-                    <i className="fa-solid fa-list-ul"></i> All Surgeons Log
+                    <i className="fa-solid fa-list-ul"></i> All Operations
                 </button>
                 <button 
                     onClick={() => setActiveTab("BY_STATUS")}
@@ -227,18 +230,35 @@ const OperationManagement = () => {
                                             </td>
                                             <td style={{ padding: "1.25rem 1.5rem", textAlign: "right" }}>
                                                 <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-
                                                     <button 
-                                                        onClick={() => navigate(`/operation-monitoring/${op.operationId}`, { state: { operationData: op } })}
+                                                        onClick={() => {
+                                                            setSelectedBillingOp(op);
+                                                            setIsBillingModalOpen(true);
+                                                        }}
                                                         style={{ 
                                                             padding: "0.4rem 0.8rem", 
-                                                            backgroundColor: (op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? "#2563eb" : "#fff", 
-                                                            color: (op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? "white" : "#0f172a",
-                                                            border: "1px solid #cbd5e1", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700" 
+                                                            backgroundColor: "#f8fafc", 
+                                                            color: "#2563eb",
+                                                            border: "1px solid #dbeafe", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700",
+                                                            display: "flex", alignItems: "center", gap: "0.4rem"
                                                         }}
                                                     >
-                                                        {(op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? <><i className="fa-solid fa-desktop"></i> Monitor</> : "View Details"}
+                                                        <i className="fa-solid fa-file-invoice-dollar"></i> Billing
                                                     </button>
+
+                                                    {user?.role !== ROLES.BILLING_INCHARGE && (
+                                                        <button 
+                                                            onClick={() => navigate(`/operation-monitoring/${op.operationId}`, { state: { operationData: op } })}
+                                                            style={{ 
+                                                                padding: "0.4rem 0.8rem", 
+                                                                backgroundColor: (op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? "#2563eb" : "#fff", 
+                                                                color: (op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? "white" : "#0f172a",
+                                                                border: "1px solid #cbd5e1", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700" 
+                                                            }}
+                                                        >
+                                                            {(op.status === "IN_PROGRESS" || op.status === "SCHEDULED") ? <><i className="fa-solid fa-desktop"></i> Monitor</> : "View Details"}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -257,7 +277,14 @@ const OperationManagement = () => {
                 </div>
             )}
 
-
+            {isBillingModalOpen && (
+                <BillingModal 
+                    isOpen={isBillingModalOpen}
+                    onClose={() => setIsBillingModalOpen(false)}
+                    operationId={selectedBillingOp?.operationId}
+                    patientName={selectedBillingOp?.patientName}
+                />
+            )}
         </div>
     );
 };

@@ -6,9 +6,9 @@ import StaffOperationManagement from "./StaffOperationManagement";
 
 const OperationsListWrapper = () => {
     const { user } = useAuthContext();
-    const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN;
+    const isManagementRole = [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.RECEPTIONIST, ROLES.BILLING_INCHARGE].includes(user?.role);
 
-    if (isAdmin) {
+    if (isManagementRole) {
         return <OperationManagement />;
     }
 
