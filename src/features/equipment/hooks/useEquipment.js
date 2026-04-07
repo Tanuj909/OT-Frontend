@@ -5,14 +5,19 @@ import {
     getAllEquipmentApi,
     updateEquipmentApi,
     updateEquipmentStatusApi,
-    deleteEquipmentApi
-} from "../serivces/equipment";
+    deleteEquipmentApi,
+    getEquipmentPricingByEquipmentIdApi,
+    createEquipmentPricingApi,
+    updateEquipmentPricingApi,
+    deleteEquipmentPricingApi
+} from "../services/equipment";
 
 export const useEquipment = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [equipmentList, setEquipmentList] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState(null);
+    const [activePricing, setActivePricing] = useState(null);
 
     const fetchAllEquipment = useCallback(async () => {
         setLoading(true);
@@ -100,16 +105,74 @@ export const useEquipment = () => {
         }
     }, []);
 
+    // --- PRICING FUNCTIONS ---
+    const fetchActivePricing = useCallback(async (equipmentId) => {
+        setLoading(true);
+        setError(null);
+        setActivePricing(null);
+        try {
+            const res = await getEquipmentPricingByEquipmentIdApi(equipmentId);
+            const data = res.data?.data || res.data;
+            setActivePricing(data);
+            return { success: true, data };
+        } catch (err) {
+            // It's okay if no pricing is found
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const savePricing = useCallback(async (pricingId, data) => {
+        setLoading(true);
+        setError(null);
+        try {
+            let res;
+            if (pricingId) {
+                res = await updateEquipmentPricingApi(pricingId, data);
+            } else {
+                res = await createEquipmentPricingApi(data);
+            }
+            const savedData = res.data?.data || res.data;
+            setActivePricing(savedData);
+            return { success: true, data: savedData };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to save pricing.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const removePricing = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            await deleteEquipmentPricingApi(id);
+            setActivePricing(null);
+            return { success: true };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to delete pricing.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
         equipmentList,
         selectedEquipment,
+        activePricing,
         fetchAllEquipment,
         fetchEquipmentById,
         addEquipment,
         editEquipment,
         updateStatus,
-        removeEquipment
+        removeEquipment,
+        fetchActivePricing,
+        savePricing,
+        removePricing
     };
 };

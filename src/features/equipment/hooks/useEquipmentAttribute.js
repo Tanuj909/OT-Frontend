@@ -4,7 +4,7 @@ import {
     getAllAttributesApi,
     updateAttributeApi,
     deleteAttributeApi
-} from "../serivces/equipmentAttribute";
+} from "../services/equipmentAttribute";
 
 export const useEquipmentAttribute = () => {
     const [loading, setLoading] = useState(false);

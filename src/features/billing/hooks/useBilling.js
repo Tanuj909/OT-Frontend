@@ -5,7 +5,8 @@ import {
     getRoomBillingDetailsApi, 
     getItemBillingDetailsApi,
     makePaymentApi,
-    getPaymentHistoryApi
+    getPaymentHistoryApi,
+    getBillingSummaryApi
 } from "../services/billingService";
 
 export const useBilling = () => {
@@ -16,6 +17,7 @@ export const useBilling = () => {
     const [roomDetails, setRoomDetails] = useState([]);
     const [itemDetails, setItemDetails] = useState([]);
     const [paymentHistory, setPaymentHistory] = useState(null);
+    const [billingSummary, setBillingSummary] = useState(null);
 
     const fetchAllBillingData = useCallback(async (operationId) => {
         setLoading(true);
@@ -58,6 +60,21 @@ export const useBilling = () => {
         }
     }, []);
 
+    const fetchBillingSummary = useCallback(async (operationId) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await getBillingSummaryApi(operationId);
+            setBillingSummary(res.data?.data || res.data);
+            return { success: true, data: res.data?.data || res.data };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to fetch billing summary.");
+            return { success: false };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
@@ -66,7 +83,9 @@ export const useBilling = () => {
         roomDetails,
         itemDetails,
         paymentHistory,
+        billingSummary,
         fetchAllBillingData,
-        makePayment
+        makePayment,
+        fetchBillingSummary
     };
 };

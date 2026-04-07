@@ -18,3 +18,19 @@ export const updateEquipmentStatusApi = (id, status) =>
 
 export const deleteEquipmentApi = (id) => 
     axiosInstance.delete(EQUIPMENT_ENDPOINTS.DELETE.replace(":id", id));
+
+// PRICING SERVICES
+export const createEquipmentPricingApi = (data) => 
+    axiosInstance.post(EQUIPMENT_ENDPOINTS.PRICING_CREATE, data);
+
+export const updateEquipmentPricingApi = (id, data) => 
+    axiosInstance.put(EQUIPMENT_ENDPOINTS.PRICING_UPDATE.replace(":id", id), data);
+
+export const getEquipmentPricingByIdApi = (id) => 
+    axiosInstance.get(EQUIPMENT_ENDPOINTS.PRICING_GET_BY_ID.replace(":id", id));
+
+export const getEquipmentPricingByEquipmentIdApi = (equipmentId) => 
+    axiosInstance.get(EQUIPMENT_ENDPOINTS.PRICING_GET_BY_EQUIPMENT.replace(":id", equipmentId));
+
+export const deleteEquipmentPricingApi = (id) => 
+    axiosInstance.delete(EQUIPMENT_ENDPOINTS.PRICING_DELETE.replace(":id", id));

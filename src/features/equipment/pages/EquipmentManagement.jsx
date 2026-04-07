@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEquipment } from "../hooks/useEquipment";
+import EquipmentPricing from "../components/EquipmentPricing";
 
 const EquipmentStatus = {
     OPERATIONAL: "OPERATIONAL",
@@ -39,6 +40,10 @@ const EquipmentManagement = () => {
     const [selectedId, setSelectedId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("");
+
+    // Pricing States
+    const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+    const [pricingEquipment, setPricingEquipment] = useState(null);
 
     // Form States
     const [formData, setFormData] = useState({
@@ -106,6 +111,11 @@ const EquipmentManagement = () => {
             });
         }
         setIsModalOpen(true);
+    };
+
+    const openPricingModal = (equipment) => {
+        setPricingEquipment(equipment);
+        setIsPricingModalOpen(true);
     };
 
     const handleSubmit = async (e) => {
@@ -280,6 +290,17 @@ const EquipmentManagement = () => {
                                             >
                                                 <i className="fa-solid fa-microscope"></i> Attributes
                                             </button>
+                                            <button 
+                                                onClick={() => openPricingModal(e)}
+                                                style={{ 
+                                                    padding: "0.4rem 0.8rem", backgroundColor: "#f0fdf4", color: "#16a34a", 
+                                                    border: "1px solid #dcfce7", borderRadius: "4px", cursor: "pointer", 
+                                                    fontSize: "0.75rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.3rem" 
+                                                }} 
+                                                title="Manage Billing Rates"
+                                            >
+                                                <i className="fa-solid fa-indian-rupee-sign"></i> Pricing
+                                            </button>
                                             <button onClick={() => openModal("EDIT", e)} style={{ padding: "0.4rem", backgroundColor: "#fff", border: "1px solid #cbd5e1", borderRadius: "4px", cursor: "pointer", color: "#0f172a" }} title="Calibrate Specifications">
                                                 <i className="fa-solid fa-gears"></i>
                                             </button>
@@ -384,6 +405,17 @@ const EquipmentManagement = () => {
                         </div>
                     </form>
                 </div>
+            )}
+
+            {isPricingModalOpen && pricingEquipment && (
+                <EquipmentPricing
+                    isOpen={isPricingModalOpen}
+                    onClose={() => {
+                        setIsPricingModalOpen(false);
+                        setPricingEquipment(null);
+                    }}
+                    equipment={pricingEquipment}
+                />
             )}
         </div>
     );

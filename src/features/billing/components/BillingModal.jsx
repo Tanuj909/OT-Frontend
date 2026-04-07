@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useBilling } from "../hooks/useBilling";
-import BillingSummary from "./BillingSummary";
+import BillingDashboardTab from "./BillingDashboardTab";
 import RoomBilling from "./RoomBilling";
 import ItemBilling from "./ItemBilling";
 import PaymentHistory from "./PaymentHistory";
+import BillingSummary from "./BillingSummary"; // Import the new summary report
 
 const BillingModal = ({ isOpen, onClose, operationId, patientName }) => {
     const { 
@@ -14,8 +15,12 @@ const BillingModal = ({ isOpen, onClose, operationId, patientName }) => {
         roomDetails, 
         itemDetails, 
         paymentHistory,
-        fetchAllBillingData 
+        fetchAllBillingData,
+        fetchBillingSummary,
+        billingSummary 
     } = useBilling();
+
+    const [isSummaryReportOpen, setIsSummaryReportOpen] = useState(false);
 
     const [activeTab, setActiveTab] = useState("SUMMARY"); // SUMMARY, ROOMS, ITEMS, HISTORY
 
@@ -144,7 +149,7 @@ const BillingModal = ({ isOpen, onClose, operationId, patientName }) => {
                     ) : (
                         <div style={{ height: "100%" }}>
                             {activeTab === "SUMMARY" && (
-                                <BillingSummary 
+                                <BillingDashboardTab 
                                     master={billingMaster} 
                                     details={billingDetails} 
                                     formatCurrency={formatCurrency} 
@@ -188,19 +193,31 @@ const BillingModal = ({ isOpen, onClose, operationId, patientName }) => {
                         Dismiss
                     </button>
                     <button 
-                        onClick={() => window.print()}
+                        onClick={async () => {
+                            const res = await fetchBillingSummary(operationId);
+                            if (res.success) {
+                                setIsSummaryReportOpen(true);
+                            }
+                        }}
                         style={{ 
-                            padding: "0.6rem 1.25rem", borderRadius: "8px", border: "none", backgroundColor: "#0f172a", 
+                            padding: "0.6rem 1.25rem", borderRadius: "8px", border: "none", backgroundColor: "#2563eb", 
                             color: "white", fontWeight: "800", cursor: "pointer", display: "flex", alignItems: "center", 
                             gap: "0.5rem", fontSize: "0.7rem", transition: "all 0.2s"
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#1e293b"}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#0f172a"}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#1d4ed8"}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#2563eb"}
                     >
-                        <i className="fa-solid fa-file-pdf"></i>
-                        Print Statement
+                        <i className="fa-solid fa-file-invoice"></i>
+                        Print Invoice
                     </button>
                 </div>
+                {isSummaryReportOpen && (
+                    <BillingSummary 
+                        isOpen={isSummaryReportOpen}
+                        onClose={() => setIsSummaryReportOpen(false)}
+                        data={billingSummary}
+                    />
+                )}
             </div>
         </div>
     );

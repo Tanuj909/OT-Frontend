@@ -7,6 +7,8 @@ import { useStaff } from "../../staff/hooks/useStaff";
 import { useAuthContext } from "../../../context/AuthContext";
 import { ROLES } from "../../../shared/constants/roles";
 import BillingModal from "../../billing/components/BillingModal";
+import BillingSummary from "../../billing/components/BillingSummary";
+import { useBilling } from "../../billing/hooks/useBilling";
 
 const SURGERY_STATUS = [
     "REQUESTED", "SCHEDULED", "CONFIRMED", "IN_PROGRESS", 
@@ -33,6 +35,8 @@ const OperationManagement = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBillingOp, setSelectedBillingOp] = useState(null);
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+    const [isBillingSummaryOpen, setIsBillingSummaryOpen] = useState(false);
+    const { fetchBillingSummary, billingSummary } = useBilling();
 
     const loadData = useCallback(() => {
         if (activeTab === "ALL") {
@@ -45,6 +49,13 @@ const OperationManagement = () => {
             fetchOperationsByStatus(selectedStatus);
         }
     }, [activeTab, selectedStatus, fetchAllOperations, fetchOperationsByStatus]);
+
+    const handleViewBillingSummary = async (opId) => {
+        const res = await fetchBillingSummary(opId);
+        if (res.success) {
+            setIsBillingSummaryOpen(true);
+        }
+    };
 
     useEffect(() => {
         loadData();
@@ -245,6 +256,18 @@ const OperationManagement = () => {
                                                     >
                                                         <i className="fa-solid fa-file-invoice-dollar"></i> Billing
                                                     </button>
+                                                    <button 
+                                                        onClick={() => handleViewBillingSummary(op.operationId)}
+                                                        style={{ 
+                                                            padding: "0.4rem 0.8rem", 
+                                                            backgroundColor: "#f0f9ff", 
+                                                            color: "#0369a1",
+                                                            border: "1px solid #e0f2fe", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700",
+                                                            display: "flex", alignItems: "center", gap: "0.4rem"
+                                                        }}
+                                                    >
+                                                        <i className="fa-solid fa-file-contract"></i> Summary
+                                                    </button>
 
                                                     {user?.role !== ROLES.BILLING_INCHARGE && (
                                                         <button 
@@ -283,6 +306,14 @@ const OperationManagement = () => {
                     onClose={() => setIsBillingModalOpen(false)}
                     operationId={selectedBillingOp?.operationId}
                     patientName={selectedBillingOp?.patientName}
+                />
+            )}
+
+            {isBillingSummaryOpen && (
+                <BillingSummary 
+                    isOpen={isBillingSummaryOpen}
+                    onClose={() => setIsBillingSummaryOpen(false)}
+                    data={billingSummary}
                 />
             )}
         </div>

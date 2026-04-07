@@ -18,3 +18,6 @@ export const makePaymentApi = (data) =>
 
 export const getPaymentHistoryApi = (operationId) => 
     axiosInstance.get(BILLING_ENDPOINTS.GET_PAYMENT_HISTORY.replace(":id", operationId));
+
+export const getBillingSummaryApi = (operationId) => 
+    axiosInstance.get(BILLING_ENDPOINTS.GET_SUMMARY.replace(":id", operationId));
