@@ -45,6 +45,8 @@ const OperationManagement = () => {
             fetchOperationsByStatus("SCHEDULED");
         } else if (activeTab === "IN_PROGRESS") {
             fetchOperationsByStatus("IN_PROGRESS");
+        } else if (activeTab === "COMPLETED") {
+            fetchOperationsByStatus("COMPLETED");
         } else {
             fetchOperationsByStatus(selectedStatus);
         }
@@ -125,6 +127,18 @@ const OperationManagement = () => {
                     }}
                 >
                     <i className="fa-solid fa-spinner"></i> In Progress
+                </button>
+                <button 
+                    onClick={() => setActiveTab("COMPLETED")}
+                    style={{ 
+                        padding: "0.75rem 1.5rem", border: "none", background: "none", cursor: "pointer",
+                        fontWeight: "700", fontSize: "0.875rem", whiteSpace: "nowrap",
+                        color: activeTab === "COMPLETED" ? "var(--hospital-blue)" : "#64748b",
+                        borderBottom: activeTab === "COMPLETED" ? "2px solid var(--hospital-blue)" : "none",
+                        transition: "all 0.2s"
+                    }}
+                >
+                    <i className="fa-solid fa-circle-check"></i> Completed
                 </button>
                 <button 
                     onClick={() => setActiveTab("ALL")}

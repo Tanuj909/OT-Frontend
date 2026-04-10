@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useWard } from "../hooks/useWard";
+import WardRoomManagement from "../components/WardRoomManagement";
 
 const WardManagement = () => {
     const { loading, error, wards, fetchAllWards, addWard, editWard, toggleWardStatus } = useWard();
     
     // UI States
+    const [view, setView] = useState("WARDS"); // WARDS or ROOMS
+    const [activeWard, setActiveWard] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState("ADD"); // ADD or EDIT
     const [selectedId, setSelectedId] = useState(null);
@@ -20,8 +23,10 @@ const WardManagement = () => {
     });
 
     useEffect(() => {
-        fetchAllWards(filters);
-    }, [filters, fetchAllWards]);
+        if (view === "WARDS") {
+            fetchAllWards(filters);
+        }
+    }, [filters, fetchAllWards, view]);
 
     const handleSearchChange = (e) => setSearchTerm(e.target.value);
     
@@ -79,6 +84,24 @@ const WardManagement = () => {
             fetchAllWards(filters);
         }
     };
+
+    const handleViewRooms = (ward) => {
+        setActiveWard(ward);
+        setView("ROOMS");
+    };
+
+    const handleBackToWards = () => {
+        setView("WARDS");
+        setActiveWard(null);
+    };
+
+    if (view === "ROOMS" && activeWard) {
+        return (
+            <div style={{ padding: "1.5rem" }}>
+                <WardRoomManagement ward={activeWard} onBack={handleBackToWards} />
+            </div>
+        );
+    }
 
     return (
         <div style={{ padding: "1.5rem" }}>
@@ -177,6 +200,21 @@ const WardManagement = () => {
                                     </td>
                                     <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
                                         <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                                            <button 
+                                                onClick={() => handleViewRooms(ward)} 
+                                                style={{ 
+                                                    padding: "0.4rem 0.8rem", 
+                                                    backgroundColor: "rgba(30, 64, 175, 0.1)", 
+                                                    color: "var(--hospital-blue)", 
+                                                    border: "1px solid rgba(30, 64, 175, 0.2)", 
+                                                    borderRadius: "4px", cursor: "pointer",
+                                                    fontSize: "0.75rem", fontWeight: "700",
+                                                    display: "flex", alignItems: "center", gap: "0.3rem"
+                                                }} 
+                                                title="Manage Ward Rooms"
+                                            >
+                                                <i className="fa-solid fa-door-open"></i> Rooms
+                                            </button>
                                             <button onClick={() => openModal("EDIT", ward)} style={{ padding: "0.4rem", backgroundColor: "white", border: "1px solid #cbd5e1", borderRadius: "4px", cursor: "pointer" }} title="Edit Configuration">
                                                 <i className="fa-solid fa-pen-to-square"></i>
                                             </button>
