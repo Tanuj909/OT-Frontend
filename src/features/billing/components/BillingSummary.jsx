@@ -24,11 +24,13 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
     }).format(amount || 0);
   };
 
+  const staffCharges = data.staffCharges?.staff || [];
   const roomCharges = data.roomCharges?.rooms || [];
+  const recoveryRoom = data.recoveryRoomCharges?.recoveryRoom || null;
   const itemCharges = data.itemCharges?.items || [];
   const payments = data.payments || [];
   
-  const totalPages = 3;
+  const totalPages = 4;
 
   const PageHeader = ({ pageNum, title }) => (
     <div className="page-header">
@@ -329,13 +331,13 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
       </div>
 
       <div className="report-print-container">
-        {/* ══ PAGE 1: OVERVIEW & ROOM CHARGES ══ */}
+        {/* ══ PAGE 1: OVERVIEW & PROFESSIONAL CHARGES ══ */}
         <div className="page">
-          <PageHeader pageNum={1} title="OT Billing: Overview & Facility Charges" />
+          <PageHeader pageNum={1} title="Bill Summary: Overview & Professional Fees" />
 
           <div className="page-content">
             <div className="section">
-              <div className="section-title">1. Patient & Operation Information</div>
+              <div className="section-title">1. Information Summary</div>
               <div className="kv-grid col4">
                 <div className="kv"><span className="kv-label">Operation ID</span><span className="kv-value">OT-{data.operationExternalId?.toString().padStart(3, '0')}</span></div>
                 <div className="kv"><span className="kv-label">Patient ID</span><span className="kv-value">PX-{data.patientExternalId?.toString().padStart(3, '0')}</span></div>
@@ -345,7 +347,7 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
             </div>
 
             <div className="section">
-              <div className="section-title">2. Financial Summary</div>
+              <div className="section-title">2. Financial Totals</div>
               <div className="summary-box">
                 <div className="billing-card">
                   <div className="billing-row"><span>Gross Amount</span><span>{formatCurrency(data.grossAmount)}</span></div>
@@ -357,40 +359,38 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
                   <div className="billing-row"><span>Total Balance</span><span>{formatCurrency(data.totalAmount)}</span></div>
                   <div className="billing-row"><span>Total Paid</span><span style={{ color: '#16a34a' }}>{formatCurrency(data.totalPaid)}</span></div>
                   <div className="billing-row"><span>Total Refunded</span><span>{formatCurrency(data.totalRefunded)}</span></div>
-                  <div className="billing-row"><span>Due Amount</span><span style={{ color: '#dc2626' }}>{formatCurrency(data.due)}</span></div>
+                  <div className="billing-row"><span>Due Amount</span><span style={{ color: '#dc2626', fontWeight: '800' }}>{formatCurrency(data.due)}</span></div>
                 </div>
               </div>
             </div>
 
-            {roomCharges.length > 0 && (
+            {staffCharges.length > 0 && (
                 <div className="section">
-                    <div className="section-title">3. Room & Facility Charges</div>
+                    <div className="section-title">3. Professional Staff Charges</div>
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th>Room / Facility Details</th>
-                                <th>Duration</th>
-                                <th>Rate/Hr</th>
+                                <th>Professional Identity / Role</th>
+                                <th>Base Fee</th>
                                 <th className="text-right">GST</th>
-                                <th className="text-right">Amount</th>
+                                <th className="text-right">Total Fee</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {roomCharges.map((room, idx) => (
+                            {staffCharges.map((staff, idx) => (
                                 <tr key={idx}>
                                     <td>
-                                        <strong>{room.roomName}</strong><br />
-                                        <small style={{ color: '#666' }}>{formatDate(room.startTime).split(',')[0]} (Room #{room.roomNumber})</small>
+                                        <strong>{staff.staffName}</strong><br />
+                                        <small style={{ color: '#666' }}>{staff.staffRole?.replace(/_/g, ' ')}</small>
                                     </td>
-                                    <td>{room.durationMinutes} min ({(room.totalHours || 0).toFixed(2)}h)</td>
-                                    <td>{formatCurrency(room.ratePerHour)}</td>
-                                    <td className="text-right">{formatCurrency(room.gstAmount)} ({room.gstPercent || 0}%)</td>
-                                    <td className="text-right">{formatCurrency(room.totalAmount)}</td>
+                                    <td>{formatCurrency(staff.fees)}</td>
+                                    <td className="text-right">{formatCurrency(staff.gstAmount)} ({staff.gstPercent || 0}%)</td>
+                                    <td className="text-right" style={{ fontWeight: '600' }}>{formatCurrency(staff.totalAmount)}</td>
                                 </tr>
                             ))}
                             <tr className="total-row">
-                                <td colSpan="4" className="text-right">Subtotal Room Charges</td>
-                                <td className="text-right">{formatCurrency(data.roomCharges.totalAmount)}</td>
+                                <td colSpan="3" className="text-right">Subtotal Professional Fees</td>
+                                <td className="text-right">{formatCurrency(data.staffCharges.totalAmount)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -401,20 +401,97 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
           <PageFooter pageNum={1} />
         </div>
 
-        {/* ══ PAGE 2: ITEMISED CLINICAL CHARGES ══ */}
+        {/* ══ PAGE 2: FACILITY & BED CHARGES ══ */}
         <div className="page">
-          <PageHeader pageNum={2} title="OT Billing: Itemized Clinical Charges" />
+          <PageHeader pageNum={2} title="OT Billing: Facility & Bed Charges" />
+
+          <div className="page-content">
+            {roomCharges.length > 0 && (
+                <div className="section">
+                    <div className="section-title">4. OT Room Utilization Charges</div>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Room Description</th>
+                                <th>Usage Period</th>
+                                <th>Rate/Hr</th>
+                                <th className="text-right">GST</th>
+                                <th className="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {roomCharges.map((room, idx) => (
+                                <tr key={idx}>
+                                    <td>
+                                        <strong>{room.roomName} (Room #{room.roomNumber})</strong><br />
+                                        <small style={{ color: '#666' }}>ID: {room.id}</small>
+                                    </td>
+                                    <td>{room.durationMinutes} min ({(room.totalHours || 0).toFixed(2)}h)</td>
+                                    <td>{formatCurrency(room.ratePerHour)}</td>
+                                    <td className="text-right">{formatCurrency(room.gstAmount)} ({room.gstPercent || 0}%)</td>
+                                    <td className="text-right">{formatCurrency(room.totalAmount)}</td>
+                                </tr>
+                            ))}
+                            <tr className="total-row">
+                                <td colSpan="4" className="text-right">Subtotal OT Facility Charges</td>
+                                <td className="text-right">{formatCurrency(data.roomCharges.totalAmount)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {recoveryRoom && (
+                <div className="section" style={{ marginTop: '20px' }}>
+                    <div className="section-title">5. Recovery Ward / ICU Charges</div>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Ward & Bed Assignment</th>
+                                <th>Observation Duration</th>
+                                <th>Rate/Hr</th>
+                                <th className="text-right">GST</th>
+                                <th className="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <strong>{recoveryRoom.wardRoomName}</strong><br />
+                                    <small style={{ color: '#666' }}>Bed Number: {recoveryRoom.wardRoomBedId}</small>
+                                </td>
+                                <td>{recoveryRoom.durationMinutes} min ({(recoveryRoom.totalHours || 0).toFixed(2)}h)</td>
+                                <td>{formatCurrency(recoveryRoom.ratePerHour)}</td>
+                                <td className="text-right">{formatCurrency(recoveryRoom.gstAmount)} ({recoveryRoom.gstPercent || 0}%)</td>
+                                <td className="text-right" style={{ fontWeight: '600' }}>{formatCurrency(recoveryRoom.totalAmount)}</td>
+                            </tr>
+                            <tr className="total-row">
+                                <td colSpan="4" className="text-right">Subtotal Recovery Charges</td>
+                                <td className="text-right">{formatCurrency(data.recoveryRoomCharges.totalAmount)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )}
+          </div>
+
+          <PageFooter pageNum={2} />
+        </div>
+
+        {/* ══ PAGE 3: ITEMISED CLINICAL CHARGES ══ */}
+        <div className="page">
+          <PageHeader pageNum={3} title="OT Billing: Clinical Itemisation" />
 
           <div className="page-content">
             {itemCharges.length > 0 ? (
                 <div className="section">
-                    <div className="section-title">4. Itemized Clinical Charges (Consumables & Implants)</div>
+                    <div className="section-title">6. Clinical Items (Pharmacy, Consumables & Implants)</div>
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th>Item Description</th>
-                                <th>Category</th>
-                                <th>Qty x Unit Price</th>
+                                <th>Clinical Desc.</th>
+                                <th>Classification</th>
+                                <th>Price Structure</th>
                                 <th className="text-right">GST</th>
                                 <th className="text-right">Amount</th>
                             </tr>
@@ -424,48 +501,48 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
                                 <tr key={idx}>
                                     <td>
                                         <strong>{item.itemName}</strong><br />
-                                        <small style={{ color: '#666' }}>{item.itemCode || 'Code: N/A'}</small>
+                                        <small style={{ color: '#666' }}>{item.itemCode || 'CODE_NA'}</small>
                                     </td>
                                     <td><span style={{ fontSize: '7.5pt', background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>{(item.itemType || 'ITEM').replace(/_/g, ' ')}</span></td>
-                                    <td>{item.quantity} {item.unit || 'Units'} x {formatCurrency(item.unitPrice)}</td>
+                                    <td>{item.quantity} Unit(s) x {formatCurrency(item.unitPrice)}</td>
                                     <td className="text-right">{formatCurrency(item.gstAmount)} ({item.gstPercent || 0}%)</td>
                                     <td className="text-right">{formatCurrency(item.totalAmount)}</td>
                                 </tr>
                             ))}
                             <tr className="total-row">
-                                <td colSpan="4" className="text-right">Subtotal Item Charges</td>
+                                <td colSpan="4" className="text-right">Subtotal Clinical Items</td>
                                 <td className="text-right">{formatCurrency(data.itemCharges.totalAmount)}</td>
                             </tr>
                         </tbody>
                     </table>
-                    <div style={{ marginTop: '20px', fontSize: '8pt', color: '#666' }}>
-                        * This includes all surgical consumables, implants, and anesthesia related medications used during the procedure.
-                    </div>
                 </div>
             ) : (
-                <div style={{ padding: '50px', textAlign: 'center', color: '#999' }}>No itemized clinical charges applied.</div>
+                <div style={{ padding: '80px', textAlign: 'center', color: '#999' }}>
+                    <i className="fa-solid fa-box-open" style={{ fontSize: '30pt', marginBottom: '15px', color: '#eee' }}></i><br />
+                    No itemized clinical charges applied to this billing session.
+                </div>
             )}
           </div>
 
-          <PageFooter pageNum={2} />
+          <PageFooter pageNum={3} />
         </div>
 
-        {/* ══ PAGE 3: PAYMENT ACKNOWLEDGEMENT & SIGS ══ */}
+        {/* ══ PAGE 4: SETTLEMENT & TERMES ══ */}
         <div className="page">
-          <PageHeader pageNum={3} title="OT Billing: Payment Acknowledgement" />
+          <PageHeader pageNum={4} title="OT Billing: Accounting & Terms" />
 
           <div className="page-content">
             {payments.length > 0 ? (
                 <div className="section">
-                    <div className="section-title">5. Payment History & Acknowledgement</div>
+                    <div className="section-title">7. Settlement History</div>
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th>Transaction Reference</th>
+                                <th>Ref Number</th>
                                 <th>Mode</th>
                                 <th>Type</th>
-                                <th>Payment Date</th>
-                                <th className="text-right">Amount Received</th>
+                                <th>Processed At</th>
+                                <th className="text-right">Amt Recd.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -474,41 +551,47 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
                                     <td>{pay.referenceNumber}</td>
                                     <td>{pay.paymentMode}</td>
                                     <td>{pay.paymentType}</td>
-                                    <td>{formatDate(pay.paidAt)}</td>
+                                    <td>{formatDate(pay.paidAt).split(',')[0]}</td>
                                     <td className="text-right" style={{ color: '#16a34a', fontWeight: '700' }}>{formatCurrency(pay.amount)}</td>
                                 </tr>
                             ))}
                             <tr className="total-row">
-                                <td colSpan="4" className="text-right">Total Amount Settled Till Date</td>
+                                <td colSpan="4" className="text-right">Cumulative Amount Settled</td>
                                 <td className="text-right" style={{ color: '#16a34a' }}>{formatCurrency(data.totalPaid)}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             ) : (
-                <div style={{ padding: '50px', textAlign: 'center', color: '#999' }}>No payment records found for this statement.</div>
+                <div className="section">
+                    <div className="section-title">7. Payment Status</div>
+                    <div style={{ padding: '30px', border: '1px dashed #ccc', textAlign: 'center', color: '#666', borderRadius: '8px' }}>
+                        No payments recorded for this invoice yet. Total amount of <strong>{formatCurrency(data.totalAmount)}</strong> is currently outstanding.
+                    </div>
+                </div>
             )}
 
             <div className="section" style={{ marginTop: '30px' }}>
-                <div className="section-title">Terms & Conditions</div>
-                <ul style={{ fontSize: '8pt', color: '#555', paddingLeft: '20px' }}>
-                    <li>This is a computer-generated invoice and does not require a physical signature if validated by the billing system.</li>
-                    <li>All charges are based on the hospital's clinical protocols and approved rate-lists.</li>
-                    <li>Any discrepancies must be reported within 24 hours of discharge.</li>
-                    <li>GST is applied as per current healthcare taxation norms in India.</li>
+                <div className="section-title">Important Terms & Disclosures</div>
+                <ul style={{ fontSize: '8pt', color: '#555', paddingLeft: '20px', lineHeight: '1.8' }}>
+                    <li>This billing summary is generated based on clinical inputs from the OT and Recovery departments.</li>
+                    <li>Professional fees are calculated as per the hospital's agreement with the respective clinical staff.</li>
+                    <li>Recovery ward charges are calculated on an hourly basis; partial hours may be rounded as per hospital policy.</li>
+                    <li>Pharmacy items (Anesthesia drugs & Consumables) are billed at current hospital tariff rates.</li>
+                    <li>This document serves as an itemized statement for internal and external clarification.</li>
                 </ul>
             </div>
           </div>
 
           <div className="section" style={{ marginTop: 'auto', paddingBottom: '30px' }}>
             <div className="sigs">
-               <div className="sig-line">Billing Executive<br /><small>Corporate Accounts</small></div>
-               <div className="sig-line">Patient / Attendant<br /><small>(Acknowledgement)</small></div>
-               <div className="sig-line">Authorised Signatory<br /><small>(Hospital Seal)</small></div>
+               <div className="sig-line">Accounts Manager<br /><small>Finance Department</small></div>
+               <div className="sig-line">Patient Rep.<br /><small>(Acknowledgement)</small></div>
+               <div className="sig-line">Hospital Registrar<br /><small>(Authenticated Seal)</small></div>
             </div>
           </div>
 
-          <PageFooter pageNum={3} />
+          <PageFooter pageNum={4} />
         </div>
       </div>
     </div>
@@ -516,3 +599,4 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
 };
 
 export default BillingSummary;
+

@@ -30,7 +30,7 @@ const CatalogManagement = () => {
         fetchAllItems(filters);
     }, [filters, fetchAllItems]);
 
-    const itemTypes = ["IMPLANT", "EQUIPMENT", "CONSUMABLE", "ANESTHESIA_DRUG", "IV_FLUID", "OT_PACKAGE", "OTHER"];
+    const itemTypes = ["IMPLANT", "EQUIPMENT", "CONSUMABLE", "ANESTHESIA_DRUG", "IV_FLUID", "MEDICATION","OT_PACKAGE", "OTHER"];
 
     // Client-side filtering logic as requested (Only using GET_ALL result)
     const displayItems = items.filter(item => {

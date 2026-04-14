@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { useWardRoom } from "../hooks/useWardRoom";
+import WardRoomBeds from "./WardRoomBeds";
 
 const WardRoomManagement = ({ ward, onBack }) => {
     const { loading, error, rooms, fetchRoomsByWard, addWardRoom, editWardRoom, deactivateRoom } = useWardRoom();
     
     // UI States
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBedsModalOpen, setIsBedsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState("ADD"); // ADD or EDIT
     const [selectedRoomId, setSelectedRoomId] = useState(null);
+    const [selectedRoom, setSelectedRoom] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
     // Form State
@@ -68,6 +71,11 @@ const WardRoomManagement = ({ ward, onBack }) => {
             });
         }
         setIsModalOpen(true);
+    };
+
+    const handleViewBeds = (room) => {
+        setSelectedRoom(room);
+        setIsBedsModalOpen(true);
     };
 
     const handleDeactivate = async (id) => {
@@ -211,28 +219,41 @@ const WardRoomManagement = ({ ward, onBack }) => {
                             </div>
                         </div>
 
-                        <div style={{ display: "flex", gap: "0.75rem" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                             <button 
-                                onClick={() => openModal("EDIT", room)}
+                                onClick={() => handleViewBeds(room)}
                                 style={{ 
-                                    flex: 1, padding: "0.6rem", backgroundColor: "#f1f5f9", 
-                                    color: "#475569", border: "1px solid #e2e8f0", 
+                                    flex: "1 1 auto", padding: "0.6rem", backgroundColor: "rgba(30, 64, 175, 0.1)", 
+                                    color: "var(--hospital-blue)", border: "1px solid rgba(30, 64, 175, 0.2)", 
                                     borderRadius: "8px", cursor: "pointer", fontWeight: "700", fontSize: "0.8rem",
                                     display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem"
                                 }}
                             >
-                                <i className="fa-solid fa-edit"></i> Edit
+                                <i className="fa-solid fa-bed"></i> View Beds
+                            </button>
+                            <button 
+                                onClick={() => openModal("EDIT", room)}
+                                style={{ 
+                                    padding: "0.6rem", backgroundColor: "#f1f5f9", 
+                                    color: "#475569", border: "1px solid #e2e8f0", 
+                                    borderRadius: "8px", cursor: "pointer", fontWeight: "700", fontSize: "0.8rem",
+                                    display: "flex", alignItems: "center", justifyContent: "center", width: "40px"
+                                }}
+                                title="Edit Room"
+                            >
+                                <i className="fa-solid fa-edit"></i>
                             </button>
                             <button 
                                 onClick={() => handleDeactivate(room.id)}
                                 style={{ 
-                                    flex: 1, padding: "0.6rem", backgroundColor: "#fef2f2", 
+                                    padding: "0.6rem", backgroundColor: "#fef2f2", 
                                     color: "#dc2626", border: "1px solid #fecaca", 
                                     borderRadius: "8px", cursor: "pointer", fontWeight: "700", fontSize: "0.8rem",
-                                    display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem"
+                                    display: "flex", alignItems: "center", justifyContent: "center", width: "40px"
                                 }}
+                                title="Deactivate Room"
                             >
-                                <i className="fa-solid fa-trash-can"></i> Deactivate
+                                <i className="fa-solid fa-trash-can"></i>
                             </button>
                         </div>
                     </div>
@@ -317,6 +338,14 @@ const WardRoomManagement = ({ ward, onBack }) => {
                         </div>
                     </form>
                 </div>
+            )}
+
+            {/* Modal: View Beds */}
+            {isBedsModalOpen && (
+                <WardRoomBeds 
+                    room={selectedRoom} 
+                    onClose={() => setIsBedsModalOpen(false)} 
+                />
             )}
         </div>
     );

@@ -9,6 +9,9 @@ import { ROLES } from "../../../shared/constants/roles";
 import BillingModal from "../../billing/components/BillingModal";
 import BillingSummary from "../../billing/components/BillingSummary";
 import { useBilling } from "../../billing/hooks/useBilling";
+import TransferToRecoveryModal from "../components/TransferToRecoveryModal";
+import AdmissionStatusButton from "../components/AdmissionStatusButton";
+import RecoveryDetailsModal from "../components/RecoveryDetailsModal";
 
 const SURGERY_STATUS = [
     "REQUESTED", "SCHEDULED", "CONFIRMED", "IN_PROGRESS", 
@@ -37,6 +40,22 @@ const OperationManagement = () => {
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [isBillingSummaryOpen, setIsBillingSummaryOpen] = useState(false);
     const { fetchBillingSummary, billingSummary } = useBilling();
+
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [selectedOpForTransfer, setSelectedOpForTransfer] = useState(null);
+
+    const [isRecoveryDetailsOpen, setIsRecoveryDetailsOpen] = useState(false);
+    const [selectedOpIdForRecovery, setSelectedOpIdForRecovery] = useState(null);
+
+    const handleTransferClick = (op) => {
+        setSelectedOpForTransfer(op);
+        setIsTransferModalOpen(true);
+    };
+
+    const handleViewRecoveryClick = (opId) => {
+        setSelectedOpIdForRecovery(opId);
+        setIsRecoveryDetailsOpen(true);
+    };
 
     const loadData = useCallback(() => {
         if (activeTab === "ALL") {
@@ -283,6 +302,14 @@ const OperationManagement = () => {
                                                         <i className="fa-solid fa-file-contract"></i> Summary
                                                     </button>
 
+                                                    {op.status === "COMPLETED" && (
+                                                        <AdmissionStatusButton 
+                                                            operationId={op.operationId} 
+                                                            onTransferClick={() => handleTransferClick(op)} 
+                                                            onViewRecovery={() => handleViewRecoveryClick(op.operationId)}
+                                                        />
+                                                    )}
+
                                                     {user?.role !== ROLES.BILLING_INCHARGE && (
                                                         <button 
                                                             onClick={() => navigate(`/operation-monitoring/${op.operationId}`, { state: { operationData: op } })}
@@ -328,6 +355,21 @@ const OperationManagement = () => {
                     isOpen={isBillingSummaryOpen}
                     onClose={() => setIsBillingSummaryOpen(false)}
                     data={billingSummary}
+                />
+            )}
+
+            {isTransferModalOpen && (
+                <TransferToRecoveryModal 
+                    operation={selectedOpForTransfer}
+                    onClose={() => setIsTransferModalOpen(false)}
+                    onSuccess={loadData}
+                />
+            )}
+
+            {isRecoveryDetailsOpen && (
+                <RecoveryDetailsModal 
+                    operationId={selectedOpIdForRecovery}
+                    onClose={() => setIsRecoveryDetailsOpen(false)}
                 />
             )}
         </div>

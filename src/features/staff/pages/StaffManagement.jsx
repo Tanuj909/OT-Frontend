@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStaff } from "../hooks/useStaff";
 import { ROLES } from "../../../shared/constants/roles";
+import AddChargesModal from "../components/AddChargesModal";
 
 const StaffManagement = () => {
     const navigate = useNavigate();
@@ -20,6 +21,8 @@ const StaffManagement = () => {
     const [modalMode, setModalMode] = useState("ADD");
     const [selectedId, setSelectedId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [isChargesModalOpen, setIsChargesModalOpen] = useState(false);
+    const [selectedStaffForCharges, setSelectedStaffForCharges] = useState(null);
 
     const [selectedRole, setSelectedRole] = useState("");
 
@@ -213,6 +216,16 @@ const StaffManagement = () => {
                                         >
                                             <i className="fa-regular fa-calendar-check"></i> Availability
                                         </button>
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedStaffForCharges(staff);
+                                                setIsChargesModalOpen(true);
+                                            }}
+                                            style={{ padding: "0.4rem 0.8rem", backgroundColor: "#0ea5e9", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.3rem" }} 
+                                            title="Manage Staff Charges"
+                                        >
+                                            <i className="fa-solid fa-indian-rupee-sign"></i> Charges
+                                        </button>
                                         <button onClick={() => openModal("EDIT", staff)} style={{ padding: "0.4rem", backgroundColor: "white", border: "1px solid #cbd5e1", borderRadius: "4px", cursor: "pointer" }} title="Edit Records">
                                             <i className="fa-solid fa-user-pen"></i>
                                         </button>
@@ -283,6 +296,17 @@ const StaffManagement = () => {
                         </div>
                     </form>
                 </div>
+            )}
+
+            {/* Charges Modal */}
+            {isChargesModalOpen && selectedStaffForCharges && (
+                <AddChargesModal 
+                    staff={selectedStaffForCharges}
+                    onClose={() => {
+                        setIsChargesModalOpen(false);
+                        setSelectedStaffForCharges(null);
+                    }}
+                />
             )}
         </div>
     );
