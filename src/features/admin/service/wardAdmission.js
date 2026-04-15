@@ -9,3 +9,11 @@ export const checkAdmissionStatusApi = (operationId) =>
 
 export const getActiveAdmissionApi = (operationId) => 
     axiosInstance.get(WARD_ADMISSION_ENDPOINTS.GET_ACTIVE.replace(":operationId", operationId));
+
+export const dischargePatientApi = (operationId) => 
+    axiosInstance.patch(WARD_ADMISSION_ENDPOINTS.DISCHARGE.replace(":operationId", operationId));
+
+export const checkDischargeStatusApi = (operationId) => 
+    axiosInstance.get(WARD_ADMISSION_ENDPOINTS.IS_DISCHARGED.replace(":operationId", operationId));
+
+

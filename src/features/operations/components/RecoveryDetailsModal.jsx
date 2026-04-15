@@ -6,7 +6,7 @@ import { useCatalog } from '../../catalog/hooks/useCatalog';
 import { toast } from 'react-hot-toast';
 
 const RecoveryDetailsModal = ({ operationId, onClose }) => {
-    const { fetchActiveAdmission, loading: admissionLoading } = useWardAdmission();
+    const { fetchActiveAdmission, dischargePatient, loading: admissionLoading } = useWardAdmission();
     const { 
         recordVitals, 
         fetchAllVitals, 
@@ -31,6 +31,8 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
     const [latestVital, setLatestVital] = useState(null);
     const [isStable, setIsStable] = useState(null);
     const [showVitalsForm, setShowVitalsForm] = useState(false);
+    const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
+    const [dischargeLoading, setDischargeLoading] = useState(false);
 
     // Medication State
     const [medicationUsage, setMedicationUsage] = useState([]);
@@ -184,6 +186,24 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         (item.itemCode?.toLowerCase() || "").includes(medSearchQuery.toLowerCase())
     );
 
+    const handleDischargePatient = async () => {
+        setDischargeLoading(true);
+        try {
+            const res = await dischargePatient(operationId);
+            if (res.success) {
+                toast.success('Patient discharged successfully!');
+                setShowDischargeConfirm(false);
+                onClose();
+            } else {
+                toast.error(res.message || 'Failed to discharge patient.');
+            }
+        } catch (err) {
+            toast.error('An error occurred while discharging the patient.');
+        } finally {
+            setDischargeLoading(false);
+        }
+    };
+
     const StatusBadge = ({ stable }) => (
         <span style={{
             padding: "4px 12px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "800",
@@ -236,17 +256,47 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                     <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "600" }}>MRN: {admission.patientMrn} • {admission.roomName} (Bed {admission.bedNumber})</div>
                                 </div>
                                 <StatusBadge stable={isStable} />
+                                <span style={{
+                                    padding: "4px 12px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "800",
+                                    backgroundColor: admission.dischargedWhen ? "#e2e8f0" : "#dbeafe",
+                                    color: admission.dischargedWhen ? "#475569" : "#1e40af",
+                                    display: "inline-flex", alignItems: "center", gap: "6px", border: "1px solid " + (admission.dischargedWhen ? "#cbd5e1" : "#bfdbfe")
+                                }}>
+                                    <i className={`fa-solid ${admission.dischargedWhen ? 'fa-user-check' : 'fa-bed-pulse'}`}></i>
+                                    {admission.dischargedWhen ? "Discharged" : "Admitted"}
+                                </span>
                             </div>
                         )}
                     </div>
-                    <button onClick={onClose} style={{ 
-                        background: "#f1f5f9", border: "none", cursor: "pointer", 
-                        width: "40px", height: "40px", borderRadius: "12px",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        color: "#64748b", transition: "all 0.2s"
-                    }}>
-                        <i className="fa-solid fa-xmark"></i>
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        {admission && !admission.dischargedWhen && (
+                            <button 
+                                onClick={() => setShowDischargeConfirm(true)}
+                                style={{ 
+                                    padding: "0.625rem 1.25rem", 
+                                    background: "linear-gradient(135deg, #ef4444, #dc2626)", 
+                                    border: "none", 
+                                    cursor: "pointer", 
+                                    borderRadius: "12px",
+                                    display: "flex", alignItems: "center", gap: "0.5rem",
+                                    color: "#ffffff", fontWeight: "800", fontSize: "0.85rem",
+                                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
+                                    transition: "all 0.2s"
+                                }}
+                            >
+                                <i className="fa-solid fa-right-from-bracket"></i>
+                                Discharge Patient
+                            </button>
+                        )}
+                        <button onClick={onClose} style={{ 
+                            background: "#f1f5f9", border: "none", cursor: "pointer", 
+                            width: "40px", height: "40px", borderRadius: "12px",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: "#64748b", transition: "all 0.2s"
+                        }}>
+                            <i className="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -353,17 +403,19 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                         <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "900", color: "#0f172a" }}>Patient Vitals Log</h3>
                                         <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.9rem" }}>Record and monitor recovery progress vitals</p>
                                     </div>
-                                    <button 
-                                        onClick={() => setShowVitalsForm(!showVitalsForm)}
-                                        style={{
-                                            padding: "0.75rem 1.5rem", backgroundColor: "var(--hospital-blue)", color: "white",
-                                            border: "none", borderRadius: "14px", fontWeight: "800", cursor: "pointer",
-                                            display: "flex", alignItems: "center", gap: "0.75rem", boxShadow: "0 10px 15px -3px rgba(30, 64, 175, 0.2)"
-                                        }}
-                                    >
-                                        <i className={`fa-solid ${showVitalsForm ? 'fa-minus' : 'fa-plus'}`}></i>
-                                        {showVitalsForm ? 'Cancel Recording' : 'Record New Vitals'}
-                                    </button>
+                                    {!admission?.dischargedWhen && (
+                                        <button 
+                                            onClick={() => setShowVitalsForm(!showVitalsForm)}
+                                            style={{
+                                                padding: "0.75rem 1.5rem", backgroundColor: "var(--hospital-blue)", color: "white",
+                                                border: "none", borderRadius: "14px", fontWeight: "800", cursor: "pointer",
+                                                display: "flex", alignItems: "center", gap: "0.75rem", boxShadow: "0 10px 15px -3px rgba(30, 64, 175, 0.2)"
+                                            }}
+                                        >
+                                            <i className={`fa-solid ${showVitalsForm ? 'fa-minus' : 'fa-plus'}`}></i>
+                                            {showVitalsForm ? 'Cancel Recording' : 'Record New Vitals'}
+                                        </button>
+                                    )}
                                 </div>
 
                                 {showVitalsForm && (
@@ -511,17 +563,19 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                         <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "900", color: "#0f172a" }}>Medication Administration</h3>
                                         <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.9rem" }}>Track medicines given during recovery phase</p>
                                     </div>
-                                    <button 
-                                        onClick={() => setShowMedForm(!showMedForm)}
-                                        style={{
-                                            padding: "0.75rem 1.5rem", backgroundColor: "#0ea5e9", color: "white",
-                                            border: "none", borderRadius: "14px", fontWeight: "800", cursor: "pointer",
-                                            display: "flex", alignItems: "center", gap: "0.75rem", boxShadow: "0 10px 15px -3px rgba(14, 165, 233, 0.2)"
-                                        }}
-                                    >
-                                        <i className={`fa-solid ${showMedForm ? 'fa-minus' : 'fa-plus'}`}></i>
-                                        {showMedForm ? 'Close Picker' : 'Open Med Picker'}
-                                    </button>
+                                    {!admission?.dischargedWhen && (
+                                        <button 
+                                            onClick={() => setShowMedForm(!showMedForm)}
+                                            style={{
+                                                padding: "0.75rem 1.5rem", backgroundColor: "#0ea5e9", color: "white",
+                                                border: "none", borderRadius: "14px", fontWeight: "800", cursor: "pointer",
+                                                display: "flex", alignItems: "center", gap: "0.75rem", boxShadow: "0 10px 15px -3px rgba(14, 165, 233, 0.2)"
+                                            }}
+                                        >
+                                            <i className={`fa-solid ${showMedForm ? 'fa-minus' : 'fa-plus'}`}></i>
+                                            {showMedForm ? 'Close Picker' : 'Open Med Picker'}
+                                        </button>
+                                    )}
                                 </div>
 
                                 {showMedForm && (
@@ -627,9 +681,11 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                         <td style={{ padding: "1.25rem" }}>
                                                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                                                 <span style={{ fontWeight: "900", color: "var(--hospital-blue)", fontSize: "1.1rem" }}>{m.quantity}</span>
-                                                                <button onClick={() => handleUpdateMedQuantity(m.id, m.quantity)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "0.8rem" }}>
-                                                                    <i className="fa-solid fa-pen-to-square"></i>
-                                                                </button>
+                                                                {!admission?.dischargedWhen && (
+                                                                    <button onClick={() => handleUpdateMedQuantity(m.id, m.quantity)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "0.8rem" }}>
+                                                                        <i className="fa-solid fa-pen-to-square"></i>
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td style={{ padding: "1.25rem", fontWeight: "700", color: "#1e293b" }}>{m.givenBy}</td>
@@ -638,9 +694,11 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                             <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>{new Date(m.createdAt).toLocaleDateString()}</div>
                                                         </td>
                                                         <td style={{ padding: "1.25rem" }}>
-                                                            <button onClick={() => handleDeleteMed(m.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }}>
-                                                                <i className="fa-solid fa-trash-can"></i>
-                                                            </button>
+                                                            {!admission?.dischargedWhen && (
+                                                                <button onClick={() => handleDeleteMed(m.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }}>
+                                                                    <i className="fa-solid fa-trash-can"></i>
+                                                                </button>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 ))
@@ -661,6 +719,106 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Discharge Confirmation Modal */}
+            {showDischargeConfirm && (
+                <div style={{
+                    position: "fixed", inset: 0, backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    zIndex: 1700, backdropFilter: "blur(8px)"
+                }}>
+                    <div style={{
+                        backgroundColor: "#ffffff", borderRadius: "28px", padding: "2.5rem",
+                        width: "460px", maxWidth: "90vw",
+                        boxShadow: "0 25px 60px rgba(0, 0, 0, 0.3)",
+                        animation: "fadeInScale 0.25s ease-out"
+                    }}>
+                        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+                            <div style={{
+                                width: "72px", height: "72px", borderRadius: "50%",
+                                background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                margin: "0 auto 1.25rem auto", border: "2px solid #fecaca"
+                            }}>
+                                <i className="fa-solid fa-right-from-bracket" style={{ fontSize: "1.75rem", color: "#ef4444" }}></i>
+                            </div>
+                            <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.35rem", fontWeight: "900", color: "#0f172a" }}>
+                                Discharge Patient?
+                            </h3>
+                            <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem", lineHeight: "1.6" }}>
+                                Are you sure you want to discharge <strong style={{ color: "#1e293b" }}>{admission?.patientName}</strong> from the recovery room? This action cannot be undone.
+                            </p>
+                        </div>
+
+                        {admission && (
+                            <div style={{
+                                backgroundColor: "#f8fafc", borderRadius: "16px", padding: "1rem 1.25rem",
+                                marginBottom: "1.75rem", border: "1px solid #f1f5f9"
+                            }}>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", fontSize: "0.8rem" }}>
+                                    <div>
+                                        <span style={{ color: "#94a3b8", fontWeight: "600" }}>MRN: </span>
+                                        <span style={{ color: "#1e293b", fontWeight: "800" }}>{admission.patientMrn}</span>
+                                    </div>
+                                    <div>
+                                        <span style={{ color: "#94a3b8", fontWeight: "600" }}>Room: </span>
+                                        <span style={{ color: "#1e293b", fontWeight: "800" }}>{admission.roomName}</span>
+                                    </div>
+                                    <div>
+                                        <span style={{ color: "#94a3b8", fontWeight: "600" }}>Bed: </span>
+                                        <span style={{ color: "#1e293b", fontWeight: "800" }}>{admission.bedNumber}</span>
+                                    </div>
+                                    <div>
+                                        <span style={{ color: "#94a3b8", fontWeight: "600" }}>Admitted: </span>
+                                        <span style={{ color: "#1e293b", fontWeight: "800" }}>{new Date(admission.admissionTime).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: "0.75rem" }}>
+                            <button
+                                onClick={() => setShowDischargeConfirm(false)}
+                                disabled={dischargeLoading}
+                                style={{
+                                    flex: 1, padding: "0.875rem", borderRadius: "14px",
+                                    border: "1px solid #e2e8f0", backgroundColor: "#ffffff",
+                                    color: "#64748b", fontWeight: "800", fontSize: "0.9rem",
+                                    cursor: "pointer", transition: "all 0.2s"
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDischargePatient}
+                                disabled={dischargeLoading}
+                                style={{
+                                    flex: 1, padding: "0.875rem", borderRadius: "14px",
+                                    border: "none", 
+                                    background: dischargeLoading ? "#94a3b8" : "linear-gradient(135deg, #ef4444, #dc2626)",
+                                    color: "#ffffff", fontWeight: "800", fontSize: "0.9rem",
+                                    cursor: dischargeLoading ? "not-allowed" : "pointer",
+                                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
+                                    display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                                    transition: "all 0.2s"
+                                }}
+                            >
+                                {dischargeLoading ? (
+                                    <>
+                                        <i className="fa-solid fa-spinner fa-spin"></i>
+                                        Discharging...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fa-solid fa-check"></i>
+                                        Yes, Discharge
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
