@@ -130,13 +130,13 @@ export const NAV_ITEMS = [
     icon: "fa-solid fa-hospital-user",
     allowedRoles: [ROLES.ADMIN],
   },
-  {
-    id: "reports",
-    label: "Reports",
-    path: "/reports",
-    icon: "fa-solid fa-file-lines",
-    allowedRoles: [ROLES.ADMIN],
-  },
+  // {
+  //   id: "reports",
+  //   label: "Reports",
+  //   path: "/reports",
+  //   icon: "fa-solid fa-file-lines",
+  //   allowedRoles: [ROLES.ADMIN],
+  // },
 
   // ─── RECEPTIONIST ─────────────────────────────────────────
   {
