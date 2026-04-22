@@ -3,6 +3,11 @@ import { useWardAdmission } from '../../admin/hooks/useWardAdmission';
 import { useWardVitals } from '../hooks/useWardVitals';
 import { useMedicationUsage } from '../hooks/useMedicationUsage';
 import { useCatalog } from '../../catalog/hooks/useCatalog';
+import { useWardTasks } from '../hooks/useWardTasks';
+import { useDoctorVisits } from '../hooks/useDoctorVisits';
+import { useStaff } from '../../staff/hooks/useStaff';
+import { useAuth } from '../../auth/useAuth';
+import { ROLES } from '../../../shared/constants/roles';
 import { toast } from 'react-hot-toast';
 
 const RecoveryDetailsModal = ({ operationId, onClose }) => {
@@ -24,6 +29,25 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
     } = useMedicationUsage();
 
     const { fetchByType: fetchCatalogByType } = useCatalog();
+    const { 
+        createTask, 
+        completeTask, 
+        cancelTask, 
+        fetchTasksByAdmission,
+        fetchTasksByOperationStatus,
+        loading: tasksLoading 
+    } = useWardTasks();
+    const {
+        createVisit,
+        fetchVisitsByAdmission,
+        cancelVisit,
+        fetchLatestVisit,
+        fetchVisitsByStatus,
+        loading: visitLoading
+    } = useDoctorVisits();
+    const { staffList, fetchAllStaff } = useStaff();
+    const { user } = useAuth();
+    const isDoctor = user?.role === ROLES.DOCTOR || user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.SURGEON;
 
     const [admission, setAdmission] = useState(null);
     const [activeTab, setActiveTab] = useState('vitals');
@@ -43,6 +67,51 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         catalogId: '',
         batchNumber: '',
         quantity: 1
+    });
+
+    // Task State
+    const [tasks, setTasks] = useState([]);
+    const [taskSubTab, setTaskSubTab] = useState('assigned'); // 'assign' or 'assigned'
+    const [taskFormData, setTaskFormData] = useState({
+        taskType: 'MEDICATION',
+        taskDescription: '',
+        taskNotes: '',
+        scheduledTime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+        isRecurring: false,
+        intervalHours: '',
+        recurringEndTime: ''
+    });
+    const [showCompleteForm, setShowCompleteForm] = useState(null); // taskId
+    const [completeTaskFormData, setCompleteTaskFormData] = useState({
+        completionNotes: '',
+        readingValue: '',
+        readingUnit: ''
+    });
+    const [taskStatusFilter, setTaskStatusFilter] = useState('ALL');
+
+    // Doctor Visit State
+    const [visits, setVisits] = useState([]);
+    const [latestVisitDetail, setLatestVisitDetail] = useState(null);
+    const [visitSubTab, setVisitSubTab] = useState('list'); // 'log', 'latest', 'scheduled', 'list'
+    const [visitStatusFilter, setVisitStatusFilter] = useState('ALL');
+    const [visitFormData, setVisitFormData] = useState({
+        doctorId: '',
+        doctorName: '',
+        doctorSpecialization: '',
+        visitTime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+        clinicalObservations: '',
+        diagnosis: '',
+        treatmentPlan: '',
+        hasMedicationChange: false,
+        medicationsAdded: '',
+        medicationsDiscontinued: '',
+        medicationNotes: '',
+        nextVisitScheduled: '',
+        nextVisitInstructions: '',
+        dischargeRecommended: false,
+        dischargeNotes: '',
+        expectedDischargeDate: '',
+        status: 'COMPLETED'
     });
 
     // Form state for new vitals
@@ -94,6 +163,41 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         if (res.success) setMedicationCatalog(res.data);
     }, [fetchCatalogByType]);
 
+    const loadVisits = useCallback(async () => {
+        if (!admission?.id) return;
+        
+        if (visitSubTab === 'latest') {
+            const data = await fetchLatestVisit(operationId);
+            setLatestVisitDetail(data);
+        } else if (visitSubTab === 'scheduled') {
+            const data = await fetchVisitsByStatus(operationId, 'SCHEDULED');
+            setVisits(data);
+        } else if (visitSubTab === 'list') {
+            let data;
+            if (visitStatusFilter === 'ALL') {
+                data = await fetchVisitsByAdmission(admission.id);
+            } else {
+                data = await fetchVisitsByStatus(operationId, visitStatusFilter);
+            }
+            if (data) setVisits(data);
+        }
+    }, [admission?.id, operationId, visitSubTab, visitStatusFilter, fetchVisitsByAdmission, fetchLatestVisit, fetchVisitsByStatus]);
+
+    const loadTasks = useCallback(async () => {
+        if (!admission?.id) return;
+        
+        let data;
+        if (taskStatusFilter === 'ALL') {
+            data = await fetchTasksByAdmission(admission.id);
+        } else {
+            data = await fetchTasksByOperationStatus(operationId, taskStatusFilter);
+        }
+        
+        if (data) {
+            setTasks(data.data || data);
+        }
+    }, [admission?.id, operationId, taskStatusFilter, fetchTasksByAdmission, fetchTasksByOperationStatus]);
+
     useEffect(() => {
         loadAdmission();
         loadVitalsHistory();
@@ -101,7 +205,15 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         loadStability();
         loadMedicationUsage();
         loadMedicationCatalog();
-    }, [loadAdmission, loadVitalsHistory, loadLatestVital, loadStability, loadMedicationUsage, loadMedicationCatalog]);
+        fetchAllStaff();
+    }, [loadAdmission, loadVitalsHistory, loadLatestVital, loadStability, loadMedicationUsage, loadMedicationCatalog, fetchAllStaff]);
+
+    useEffect(() => {
+        if (admission) {
+            loadTasks();
+            loadVisits();
+        }
+    }, [admission, loadTasks, loadVisits, visitSubTab, visitStatusFilter]);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -117,6 +229,109 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
             ...prev,
             [name]: name === 'quantity' || name === 'catalogId' ? parseInt(value) : value
         }));
+    };
+    const handleTaskInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setTaskFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleCompleteInputChange = (e) => {
+        const { name, value } = e.target;
+        setCompleteTaskFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleVisitInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setVisitFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleDoctorSelect = (doc) => {
+        setVisitFormData(prev => ({
+            ...prev,
+            doctorId: doc.id,
+            doctorName: `${doc.firstName} ${doc.lastName}`,
+            doctorSpecialization: doc.specialization || 'Clinical Specialist'
+        }));
+    };
+
+    const handleVisitSubmit = async (e) => {
+        e.preventDefault();
+        if (!admission) return;
+
+        const payload = {
+            ...visitFormData,
+            operationId: parseInt(operationId),
+            wardAdmissionId: admission.id
+        };
+
+        const res = await createVisit(payload);
+        if (res) {
+            setVisitSubTab('list');
+            loadVisits();
+            // Reset form
+            setVisitFormData({
+                doctorId: '', doctorName: '', doctorSpecialization: '',
+                visitTime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+                clinicalObservations: '', diagnosis: '', treatmentPlan: '',
+                hasMedicationChange: false, medicationsAdded: '', medicationsDiscontinued: '', medicationNotes: '',
+                nextVisitScheduled: '', nextVisitInstructions: '',
+                dischargeRecommended: false, dischargeNotes: '', expectedDischargeDate: '',
+                status: 'COMPLETED'
+            });
+        }
+    };
+
+    const handleTaskSubmit = async (e) => {
+        e.preventDefault();
+        if (!admission) return;
+
+        const payload = {
+            ...taskFormData,
+            operationId: parseInt(operationId),
+            wardAdmissionId: admission.id,
+            intervalHours: taskFormData.isRecurring ? parseInt(taskFormData.intervalHours) : null,
+            recurringEndTime: taskFormData.isRecurring ? taskFormData.recurringEndTime : null
+        };
+
+        const res = await createTask(payload);
+        if (res) {
+            setTaskSubTab('assigned');
+            loadTasks();
+            setTaskFormData({
+                taskType: 'MEDICATION',
+                taskDescription: '',
+                taskNotes: '',
+                scheduledTime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+                isRecurring: false,
+                intervalHours: '',
+                recurringEndTime: ''
+            });
+        }
+    };
+
+    const handleCompleteTask = async (taskId) => {
+        const res = await completeTask(taskId, completeTaskFormData);
+        if (res) {
+            setShowCompleteForm(null);
+            loadTasks();
+            setCompleteTaskFormData({ completionNotes: '', readingValue: '', readingUnit: '' });
+        }
+    };
+
+    const handleCancelTask = async (taskId) => {
+        if (window.confirm('Are you sure you want to cancel this task?')) {
+            const res = await cancelTask(taskId);
+            if (res) loadTasks();
+        }
     };
 
     const handleSubmitVitals = async (e) => {
@@ -288,6 +503,28 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                 Discharge Patient
                             </button>
                         )}
+                        {admission && !admission.dischargedWhen && (
+                            <button 
+                                onClick={() => {
+                                    setActiveTab('tasks');
+                                    setTaskSubTab('assigned');
+                                }}
+                                style={{ 
+                                    padding: "0.625rem 1.25rem", 
+                                    background: "linear-gradient(135deg, #6366f1, #4f46e5)", 
+                                    border: "none", 
+                                    cursor: "pointer", 
+                                    borderRadius: "12px",
+                                    display: "flex", alignItems: "center", gap: "0.5rem",
+                                    color: "#ffffff", fontWeight: "800", fontSize: "0.85rem",
+                                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+                                    transition: "all 0.2s"
+                                }}
+                            >
+                                <i className="fa-solid fa-list-check"></i>
+                                Tasks
+                            </button>
+                        )}
                         <button onClick={onClose} style={{ 
                             background: "#f1f5f9", border: "none", cursor: "pointer", 
                             width: "40px", height: "40px", borderRadius: "12px",
@@ -315,6 +552,8 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                             { id: 'overview', icon: 'fa-chart-pie', label: 'Admission Overview' },
                             { id: 'vitals', icon: 'fa-heart-pulse', label: 'Ward/Recovery Vitals' },
                             { id: 'medications', icon: 'fa-pills', label: 'Medications Usage' },
+                            { id: 'tasks', icon: 'fa-list-check', label: 'Ward Tasks' },
+                            { id: 'visits', icon: 'fa-user-doctor', label: 'Doctor Visits' },
                             { id: 'orders', icon: 'fa-file-invoice', label: 'Post-Op Orders' }
                         ].map(tab => (
                             <button
@@ -710,7 +949,606 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                         )}
 
                         
-                        {activeTab === 'orders' && (
+                        {activeTab === 'tasks' && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "900", color: "#0f172a" }}>Ward Task Management</h3>
+                                        <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.9rem" }}>Manage and track patient care tasks</p>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                        {taskSubTab === 'assigned' && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", backgroundColor: "#f8fafc", padding: "0.4rem 0.8rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                                <span style={{ fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Filter:</span>
+                                                <select 
+                                                    value={taskStatusFilter}
+                                                    onChange={(e) => setTaskStatusFilter(e.target.value)}
+                                                    style={{ 
+                                                        padding: "0.3rem 0.6rem", borderRadius: "8px", border: "1px solid #cbd5e1", 
+                                                        fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", cursor: "pointer",
+                                                        outline: "none", backgroundColor: "white"
+                                                    }}
+                                                >
+                                                    <option value="ALL">All Status</option>
+                                                    <option value="PENDING">Pending</option>
+                                                    <option value="COMPLETED">Completed</option>
+                                                    <option value="CANCELLED">Cancelled</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                        <div style={{ display: "flex", gap: "0.5rem", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "12px" }}>
+                                            {isDoctor && (
+                                                <button 
+                                                    onClick={() => setTaskSubTab('assign')}
+                                                    style={{
+                                                        padding: "0.5rem 1rem", borderRadius: "10px", border: "none", fontSize: "0.85rem", fontWeight: "700",
+                                                        backgroundColor: taskSubTab === 'assign' ? "white" : "transparent",
+                                                        color: taskSubTab === 'assign' ? "#4f46e5" : "#64748b",
+                                                        cursor: "pointer", boxShadow: taskSubTab === 'assign' ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+                                                    }}
+                                                > Assign New Task </button>
+                                            )}
+                                            <button 
+                                                onClick={() => setTaskSubTab('assigned')}
+                                                style={{
+                                                    padding: "0.5rem 1rem", borderRadius: "10px", border: "none", fontSize: "0.85rem", fontWeight: "700",
+                                                    backgroundColor: taskSubTab === 'assigned' ? "white" : "transparent",
+                                                    color: taskSubTab === 'assigned' ? "#4f46e5" : "#64748b",
+                                                    cursor: "pointer", boxShadow: taskSubTab === 'assigned' ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+                                                }}
+                                            > Assigned Tasks </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {taskSubTab === 'assign' && isDoctor && (
+                                    <form onSubmit={handleTaskSubmit} style={{ 
+                                        backgroundColor: "#f8fafc", padding: "2rem", borderRadius: "24px", border: "1px solid #e2e8f0",
+                                        display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1.5rem"
+                                    }}>
+                                        <div>
+                                            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Task Type</label>
+                                            <select name="taskType" value={taskFormData.taskType} onChange={handleTaskInputChange} required
+                                                style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }}>
+                                                {["MEDICATION", "INJECTION", "VITALS_CHECK", "DRESSING", "LAB_TEST", "DIET", "OTHER"].map(type => (
+                                                    <option key={type} value={type}>{type}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Scheduled Time</label>
+                                            <input 
+                                                type="datetime-local" 
+                                                name="scheduledTime" 
+                                                value={taskFormData.scheduledTime} 
+                                                onChange={handleTaskInputChange} 
+                                                min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                                                required
+                                                style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }} 
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: "1 / -1" }}>
+                                            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Task Description</label>
+                                            <input type="text" name="taskDescription" value={taskFormData.taskDescription} onChange={handleTaskInputChange} required placeholder="e.g. Injection Ceftriaxone 1g dena hai"
+                                                style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }} />
+                                        </div>
+                                        <div style={{ gridColumn: "1 / -1" }}>
+                                            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Instructions / Notes</label>
+                                            <textarea name="taskNotes" value={taskFormData.taskNotes} onChange={handleTaskInputChange} rows="2" placeholder="e.g. IV route se dena hai"
+                                                style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "600" }}></textarea>
+                                        </div>
+                                        
+                                        <div style={{ gridColumn: "1 / -1", backgroundColor: "#ffffff", padding: "1.5rem", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+                                                <input type="checkbox" name="isRecurring" checked={taskFormData.isRecurring} onChange={handleTaskInputChange} id="isRecurring" 
+                                                    style={{ width: "18px", height: "18px", accentColor: "#4f46e5" }} />
+                                                <label htmlFor="isRecurring" style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.9rem", cursor: "pointer" }}>Is Recurring Task?</label>
+                                            </div>
+                                            
+                                            {taskFormData.isRecurring && (
+                                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                                                    <div>
+                                                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Repeat Interval (Hours)</label>
+                                                        <input type="number" name="intervalHours" value={taskFormData.intervalHours} onChange={handleTaskInputChange} placeholder="e.g. 4" required
+                                                            style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>End Recurring At</label>
+                                                        <input 
+                                                            type="datetime-local" 
+                                                            name="recurringEndTime" 
+                                                            value={taskFormData.recurringEndTime} 
+                                                            onChange={handleTaskInputChange} 
+                                                            min={taskFormData.scheduledTime || new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                                                            required
+                                                            style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }} 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
+                                            <button type="submit" disabled={tasksLoading} style={{
+                                                padding: "0.875rem 2.5rem", backgroundColor: "#4f46e5", color: "white", border: "none", borderRadius: "12px", fontWeight: "800", cursor: "pointer"
+                                            }}>
+                                                {tasksLoading ? 'Assigning...' : 'Assign Task'}
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+
+                                {taskSubTab === 'assigned' && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                                        <div style={{ 
+                                            border: "1px solid #f1f5f9", borderRadius: "24px", overflow: "hidden", 
+                                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
+                                        }}>
+                                            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                                                <thead>
+                                                    <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+                                                        <th style={{ padding: "1.25rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Scheduled</th>
+                                                        <th style={{ padding: "1.25rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Task / Type</th>
+                                                        <th style={{ padding: "1.25rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Notes</th>
+                                                        <th style={{ padding: "1.25rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Status</th>
+                                                        <th style={{ padding: "1.25rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Assigned By</th>
+                                                        <th style={{ padding: "1.25rem", fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {tasks.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan="6" style={{ padding: "3rem", textAlign: "center", color: "#94a3b8", fontWeight: "600" }}>
+                                                                No tasks assigned yet.
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        tasks.map((task) => (
+                                                            <React.Fragment key={task.id}>
+                                                                <tr style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: task.status === 'COMPLETED' ? "#f8fafc" : "white" }}>
+                                                                    <td style={{ padding: "1.25rem" }}>
+                                                                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.85rem" }}>
+                                                                            {new Date(task.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                        </div>
+                                                                        <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>{new Date(task.scheduledTime).toLocaleDateString()}</div>
+                                                                        {task.isRecurring && (
+                                                                            <span style={{ fontSize: "0.65rem", padding: "2px 6px", backgroundColor: "#e0f2fe", color: "#0369a1", borderRadius: "4px", fontWeight: "800", display: "inline-block", marginTop: "4px" }}>
+                                                                                <i className="fa-solid fa-arrows-rotate" style={{ marginRight: "4px" }}></i>
+                                                                                Every {task.intervalHours}h
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td style={{ padding: "1.25rem" }}>
+                                                                        <div style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.95rem" }}>{task.taskDescription}</div>
+                                                                        <div style={{ fontSize: "0.75rem", color: "#6366f1", fontWeight: "700", marginTop: "2px" }}>{task.taskType}</div>
+                                                                    </td>
+                                                                    <td style={{ padding: "1.25rem", maxWidth: "300px" }}>
+                                                                        <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: "500", lineHeight: "1.4" }}>{task.taskNotes || '-'}</div>
+                                                                    </td>
+                                                                    <td style={{ padding: "1.25rem" }}>
+                                                                        <span style={{ 
+                                                                            padding: "4px 10px", borderRadius: "20px", fontSize: "0.7rem", fontWeight: "800",
+                                                                            backgroundColor: 
+                                                                                task.status === 'COMPLETED' ? "#ecfdf5" : 
+                                                                                task.status === 'CANCELLED' ? "#fef2f2" : "#fff7ed",
+                                                                            color: 
+                                                                                task.status === 'COMPLETED' ? "#10b981" : 
+                                                                                task.status === 'CANCELLED' ? "#ef4444" : "#f97316",
+                                                                            border: "1px solid " + (
+                                                                                task.status === 'COMPLETED' ? "#d1fae5" : 
+                                                                                task.status === 'CANCELLED' ? "#fee2e2" : "#ffedd5"
+                                                                            )
+                                                                        }}>
+                                                                            {task.status}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td style={{ padding: "1.25rem" }}>
+                                                                        <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "0.85rem" }}>{task.assignedByName}</div>
+                                                                        <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>{new Date(task.assignedAt).toLocaleDateString()}</div>
+                                                                    </td>
+                                                                    <td style={{ padding: "1.25rem" }}>
+                                                                        {task.status === 'PENDING' && (
+                                                                            <div style={{ display: "flex", gap: "10px" }}>
+                                                                                <button 
+                                                                                    onClick={() => setShowCompleteForm(showCompleteForm === task.id ? null : task.id)}
+                                                                                    style={{ background: "#10b981", color: "white", border: "none", borderRadius: "8px", padding: "6px 12px", fontSize: "0.75rem", fontWeight: "800", cursor: "pointer" }}
+                                                                                > Complete </button>
+                                                                                <button 
+                                                                                    onClick={() => handleCancelTask(task.id)}
+                                                                                    style={{ background: "none", border: "1px solid #ef4444", color: "#ef4444", borderRadius: "8px", padding: "6px 12px", fontSize: "0.75rem", fontWeight: "800", cursor: "pointer" }}
+                                                                                > Cancel </button>
+                                                                            </div>
+                                                                        )}
+                                                                        {task.status === 'COMPLETED' && (
+                                                                            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                                                                                <strong>Done by:</strong> {task.completedByName}
+                                                                                <div style={{ fontSize: "0.65rem" }}>At: {new Date(task.completedAt).toLocaleTimeString()}</div>
+                                                                                {task.readingValue && <div style={{ color: "#10b981", fontWeight: "800", marginTop: "4px" }}>Reading: {task.readingValue} {task.readingUnit}</div>}
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                                {showCompleteForm === task.id && (
+                                                                    <tr style={{ backgroundColor: "#f0fdf4" }}>
+                                                                        <td colSpan="6" style={{ padding: "1.5rem" }}>
+                                                                            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxWidth: "800px" }}>
+                                                                                <div style={{ fontWeight: "900", color: "#166534" }}>Complete Task Details</div>
+                                                                                <div style={{ display: "grid", gridTemplateColumns: task.taskType === 'VITALS_CHECK' ? "1.5fr 1fr 1fr" : "1fr", gap: "1rem" }}>
+                                                                                    <div>
+                                                                                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#166534", marginBottom: "6px" }}>Completion Notes</label>
+                                                                                        <input type="text" name="completionNotes" value={completeTaskFormData.completionNotes} onChange={handleCompleteInputChange} placeholder="e.g. Patient is comfortable"
+                                                                                            style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", border: "1px solid #bbf7d0", fontWeight: "600" }} />
+                                                                                    </div>
+                                                                                    {task.taskType === 'VITALS_CHECK' && (
+                                                                                        <>
+                                                                                            <div>
+                                                                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#166534", marginBottom: "6px" }}>Reading Value</label>
+                                                                                                <input type="text" name="readingValue" value={completeTaskFormData.readingValue} onChange={handleCompleteInputChange} placeholder="e.g. 120/80"
+                                                                                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", border: "1px solid #bbf7d0", fontWeight: "700" }} />
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#166534", marginBottom: "6px" }}>Unit</label>
+                                                                                                <input type="text" name="readingUnit" value={completeTaskFormData.readingUnit} onChange={handleCompleteInputChange} placeholder="e.g. mmHg"
+                                                                                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", border: "1px solid #bbf7d0", fontWeight: "700" }} />
+                                                                                            </div>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+                                                                                    <button onClick={() => setShowCompleteForm(null)} style={{ padding: "0.6rem 1.25rem", border: "none", background: "none", color: "#64748b", fontWeight: "700", cursor: "pointer" }}>Dismiss</button>
+                                                                                    <button onClick={() => handleCompleteTask(task.id)} style={{ padding: "0.6rem 1.5rem", border: "none", background: "#166534", color: "white", borderRadius: "10px", fontWeight: "800", cursor: "pointer" }}>Submit Completion</button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </React.Fragment>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                                {activeTab === 'visits' && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <div>
+                                                <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: "900", color: "#0f172a" }}>Physician Visits</h3>
+                                                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.9rem" }}>Log and review doctor rounds and clinical notes</p>
+                                            </div>
+                                            <div style={{ display: "flex", gap: "0.5rem", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "12px" }}>
+                                                <button 
+                                                    onClick={() => setVisitSubTab('log')}
+                                                    style={{
+                                                        padding: "0.5rem 1rem", borderRadius: "10px", border: "none", fontSize: "0.85rem", fontWeight: "700",
+                                                        backgroundColor: visitSubTab === 'log' ? "white" : "transparent",
+                                                        color: visitSubTab === 'log' ? "#4f46e5" : "#64748b",
+                                                        cursor: "pointer", boxShadow: visitSubTab === 'log' ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+                                                    }}
+                                                > Record Visit </button>
+                                                <button 
+                                                    onClick={() => setVisitSubTab('latest')}
+                                                    style={{
+                                                        padding: "0.5rem 1rem", borderRadius: "10px", border: "none", fontSize: "0.85rem", fontWeight: "700",
+                                                        backgroundColor: visitSubTab === 'latest' ? "white" : "transparent",
+                                                        color: visitSubTab === 'latest' ? "#4f46e5" : "#64748b",
+                                                        cursor: "pointer", boxShadow: visitSubTab === 'latest' ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+                                                    }}
+                                                > Latest Visit </button>
+                                                <button 
+                                                    onClick={() => setVisitSubTab('scheduled')}
+                                                    style={{
+                                                        padding: "0.5rem 1rem", borderRadius: "10px", border: "none", fontSize: "0.85rem", fontWeight: "700",
+                                                        backgroundColor: visitSubTab === 'scheduled' ? "white" : "transparent",
+                                                        color: visitSubTab === 'scheduled' ? "#4f46e5" : "#64748b",
+                                                        cursor: "pointer", boxShadow: visitSubTab === 'scheduled' ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+                                                    }}
+                                                > Upcoming Rounds </button>
+                                                <button 
+                                                    onClick={() => setVisitSubTab('list')}
+                                                    style={{
+                                                        padding: "0.5rem 1rem", borderRadius: "10px", border: "none", fontSize: "0.85rem", fontWeight: "700",
+                                                        backgroundColor: visitSubTab === 'list' ? "white" : "transparent",
+                                                        color: visitSubTab === 'list' ? "#4f46e5" : "#64748b",
+                                                        cursor: "pointer", boxShadow: visitSubTab === 'list' ? "0 2px 4px rgba(0,0,0,0.05)" : "none"
+                                                    }}
+                                                > Visit History </button>
+                                            </div>
+                                        </div>
+
+                                        {visitSubTab === 'log' && (
+                                            <form onSubmit={handleVisitSubmit} style={{ 
+                                                backgroundColor: "#f8fafc", padding: "2.5rem", borderRadius: "24px", border: "1px solid #e2e8f0",
+                                                display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.5rem"
+                                            }}>
+                                                <div style={{ gridColumn: "1 / -1", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
+                                                    <div style={{ fontWeight: "900", color: "#1e293b", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                                        <i className="fa-solid fa-stethoscope" style={{ color: "#4f46e5" }}></i>
+                                                        Visit Entry Form
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Select Doctor</label>
+                                                    <select 
+                                                        required
+                                                        onChange={(e) => {
+                                                            const doc = staffList.find(s => s.id === parseInt(e.target.value));
+                                                            if (doc) handleDoctorSelect(doc);
+                                                        }}
+                                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }}
+                                                    >
+                                                        <option value="">-- Choose Physician --</option>
+                                                        {staffList.filter(s => [ROLES.SURGEON, ROLES.DOCTOR, ROLES.ANESTHESIOLOGIST].includes(s.role)).map(doc => (
+                                                            <option key={doc.id} value={doc.id}>Dr. {doc.firstName} {doc.lastName} ({doc.specialization || doc.role})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Visit Time</label>
+                                                    <input type="datetime-local" name="visitTime" value={visitFormData.visitTime} onChange={handleVisitInputChange} required
+                                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }} />
+                                                </div>
+
+                                                <div>
+                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Entry Status</label>
+                                                    <select name="status" value={visitFormData.status} onChange={handleVisitInputChange} 
+                                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }}>
+                                                        <option value="COMPLETED">Completed (Current Visit)</option>
+                                                        <option value="SCHEDULED">Scheduled (Future Round)</option>
+                                                    </select>
+                                                </div>
+
+                                                <div style={{ gridColumn: "1 / -1" }}>
+                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Clinical Observations</label>
+                                                    <textarea name="clinicalObservations" value={visitFormData.clinicalObservations} onChange={handleVisitInputChange} rows="3" placeholder="Describe patient's current state..."
+                                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "600" }}></textarea>
+                                                </div>
+
+                                                <div style={{ gridColumn: "1 / 2" }}>
+                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Diagnosis / Assessment</label>
+                                                    <input type="text" name="diagnosis" value={visitFormData.diagnosis} onChange={handleVisitInputChange} placeholder="Current assessment"
+                                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "600" }} />
+                                                </div>
+
+                                                <div style={{ gridColumn: "2 / -1" }}>
+                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Treatment Plan</label>
+                                                    <input type="text" name="treatmentPlan" value={visitFormData.treatmentPlan} onChange={handleVisitInputChange} placeholder="Next steps..."
+                                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "600" }} />
+                                                </div>
+
+                                                <div style={{ gridColumn: "1 / -1", backgroundColor: "white", padding: "1.5rem", borderRadius: "20px", border: "1px solid #e2e8f0" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+                                                        <input type="checkbox" name="hasMedicationChange" checked={visitFormData.hasMedicationChange} onChange={handleVisitInputChange} id="hasMedChange" 
+                                                            style={{ width: "18px", height: "18px", accentColor: "#4f46e5" }} />
+                                                        <label htmlFor="hasMedChange" style={{ fontWeight: "800", color: "#1e293b", fontSize: "0.9rem", cursor: "pointer" }}>Medication Changes?</label>
+                                                    </div>
+                                                    {visitFormData.hasMedicationChange && (
+                                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                                                            <div>
+                                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Added Medications</label>
+                                                                <input type="text" name="medicationsAdded" value={visitFormData.medicationsAdded} onChange={handleVisitInputChange}
+                                                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1" }} />
+                                                            </div>
+                                                            <div>
+                                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Discontinued Medications</label>
+                                                                <input type="text" name="medicationsDiscontinued" value={visitFormData.medicationsDiscontinued} onChange={handleVisitInputChange}
+                                                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1" }} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div style={{ gridColumn: "1 / -1", backgroundColor: "#fff5f5", padding: "1.5rem", borderRadius: "20px", border: "1px solid #fee2e2" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+                                                        <input type="checkbox" name="dischargeRecommended" checked={visitFormData.dischargeRecommended} onChange={handleVisitInputChange} id="recommDischarge" 
+                                                            style={{ width: "18px", height: "18px", accentColor: "#ef4444" }} />
+                                                        <label htmlFor="recommDischarge" style={{ fontWeight: "800", color: "#991b1b", fontSize: "0.9rem", cursor: "pointer" }}>Recommend Discharge?</label>
+                                                    </div>
+                                                    {visitFormData.dischargeRecommended && (
+                                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                                                            <div>
+                                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#991b1b", marginBottom: "6px" }}>Discharge Notes</label>
+                                                                <input type="text" name="dischargeNotes" value={visitFormData.dischargeNotes} onChange={handleVisitInputChange}
+                                                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #fca5a5" }} />
+                                                            </div>
+                                                            <div>
+                                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#991b1b", marginBottom: "6px" }}>Expected Discharge Date</label>
+                                                                <input type="datetime-local" name="expectedDischargeDate" value={visitFormData.expectedDischargeDate} onChange={handleVisitInputChange}
+                                                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #fca5a5" }} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
+                                                    <button type="submit" disabled={visitLoading} style={{
+                                                        padding: "1rem 3rem", backgroundColor: "#4f46e5", color: "white", border: "none", borderRadius: "14px", fontWeight: "900", cursor: "pointer"
+                                                    }}>
+                                                        {visitLoading ? 'Saving Entry...' : 'Post Physician Round'}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+
+                                        {visitSubTab === 'latest' && (
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                                                {!latestVisitDetail ? (
+                                                    <div style={{ textAlign: "center", padding: "5rem", backgroundColor: "#f8fafc", borderRadius: "24px", color: "#94a3b8" }}>
+                                                        <i className="fa-solid fa-user-doctor-message" style={{ fontSize: "3rem", marginBottom: "1rem" }}></i>
+                                                        <p>No visits recorded yet for this operation.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ padding: "2rem", backgroundColor: "#eff6ff", borderRadius: "24px", border: "1px solid #bfdbfe" }}>
+                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem" }}>
+                                                            <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
+                                                                <div style={{ width: "64px", height: "64px", borderRadius: "18px", backgroundColor: "white", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #bfdbfe", color: "#3b82f6", fontSize: "1.5rem" }}>
+                                                                    <i className="fa-solid fa-user-doctor"></i>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontSize: "0.75rem", fontWeight: "800", color: "#60a5fa", textTransform: "uppercase" }}>Most Recent Rounds</div>
+                                                                    <h3 style={{ margin: "4px 0", fontSize: "1.25rem", fontWeight: "900", color: "#1e3a8a" }}>{latestVisitDetail.doctorName}</h3>
+                                                                    <div style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "700" }}>{latestVisitDetail.doctorSpecialization}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ textAlign: "right" }}>
+                                                                <div style={{ fontSize: "0.95rem", fontWeight: "900", color: "#1e3a8a" }}>{new Date(latestVisitDetail.visitTime).toLocaleString()}</div>
+                                                                <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>Logged by: <strong>{latestVisitDetail.recordedByName}</strong></div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2.5rem" }}>
+                                                            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                                                                <div style={{ backgroundColor: "white", padding: "1.5rem", borderRadius: "20px", border: "1px solid #dbeafe" }}>
+                                                                    <div style={{ fontSize: "0.75rem", fontWeight: "900", color: "#3b82f6", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                                        <i className="fa-solid fa-clipboard-check"></i> Clinical Observations
+                                                                    </div>
+                                                                    <p style={{ margin: 0, fontSize: "1rem", color: "#334155", lineHeight: "1.7", fontWeight: "500" }}>{latestVisitDetail.clinicalObservations}</p>
+                                                                </div>
+                                                                
+                                                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                                                                    <div style={{ backgroundColor: "white", padding: "1.25rem", borderRadius: "20px", border: "1px solid #dbeafe" }}>
+                                                                        <div style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", marginBottom: "6px" }}>Current Assessment</div>
+                                                                        <div style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e3a8a" }}>{latestVisitDetail.diagnosis || 'No specific assessment noted'}</div>
+                                                                    </div>
+                                                                    <div style={{ backgroundColor: "white", padding: "1.25rem", borderRadius: "20px", border: "1px solid #dbeafe" }}>
+                                                                        <div style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", marginBottom: "6px" }}>Treatment Plan</div>
+                                                                        <div style={{ fontSize: "0.95rem", fontWeight: "800", color: "#1e3a8a" }}>{latestVisitDetail.treatmentPlan || 'Continue current plan'}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                                                                {latestVisitDetail.hasMedicationChange && (
+                                                                    <div style={{ backgroundColor: "#f0f9ff", padding: "1.5rem", borderRadius: "20px", border: "1px dashed #3b82f6" }}>
+                                                                        <div style={{ fontSize: "0.75rem", fontWeight: "900", color: "#2563eb", textTransform: "uppercase", marginBottom: "12px" }}>Medication Changes</div>
+                                                                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                                                            {latestVisitDetail.medicationsAdded && (
+                                                                                <div>
+                                                                                    <div style={{ fontSize: "0.65rem", fontWeight: "800", color: "#3b82f6" }}>Added</div>
+                                                                                    <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#1e40af" }}>{latestVisitDetail.medicationsAdded}</div>
+                                                                                </div>
+                                                                            )}
+                                                                            {latestVisitDetail.medicationsDiscontinued && (
+                                                                                <div>
+                                                                                    <div style={{ fontSize: "0.65rem", fontWeight: "800", color: "#ef4444" }}>Discontinued</div>
+                                                                                    <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#991b1b" }}>{latestVisitDetail.medicationsDiscontinued}</div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {latestVisitDetail.dischargeRecommended && (
+                                                                    <div style={{ backgroundColor: "#fef2f2", padding: "1.5rem", borderRadius: "20px", border: "1px solid #fecaca" }}>
+                                                                        <div style={{ fontSize: "0.75rem", fontWeight: "900", color: "#ef4444", textTransform: "uppercase", marginBottom: "10px" }}>Discharge Recommendation</div>
+                                                                        <p style={{ margin: 0, fontSize: "0.85rem", color: "#991b1b", fontWeight: "700" }}>{latestVisitDetail.dischargeNotes}</p>
+                                                                        {latestVisitDetail.expectedDischargeDate && (
+                                                                            <div style={{ marginTop: "10px", fontSize: "0.75rem", color: "#b91c1c" }}>
+                                                                                Expected At: <strong>{new Date(latestVisitDetail.expectedDischargeDate).toLocaleString()}</strong>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {(visitSubTab === 'list' || visitSubTab === 'scheduled') && (
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                                                {visitSubTab === 'list' && (
+                                                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", backgroundColor: "#f8fafc", padding: "0.4rem 0.8rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                                            <span style={{ fontSize: "0.7rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" }}>Filter Status:</span>
+                                                            <select 
+                                                                value={visitStatusFilter}
+                                                                onChange={(e) => setVisitStatusFilter(e.target.value)}
+                                                                style={{ 
+                                                                    padding: "0.3rem 0.6rem", borderRadius: "8px", border: "1px solid #cbd5e1", 
+                                                                    fontSize: "0.8rem", fontWeight: "700", color: "#1e293b", cursor: "pointer",
+                                                                    outline: "none", backgroundColor: "white"
+                                                                }}
+                                                            >
+                                                                <option value="ALL">All Statuses</option>
+                                                                <option value="COMPLETED">Completed Rounds</option>
+                                                                <option value="SCHEDULED">Upcoming Scheduled</option>
+                                                                <option value="CANCELLED">Cancelled Rounds</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {visits.length === 0 ? (
+                                                    <div style={{ textAlign: "center", padding: "5rem", backgroundColor: "#f8fafc", borderRadius: "24px", color: "#94a3b8" }}>
+                                                        <i className="fa-solid fa-notes-medical" style={{ fontSize: "3rem", marginBottom: "1rem" }}></i>
+                                                        <p>No physician visits found for the selected criteria.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                                                        {visits.sort((a,b) => new Date(b.visitTime) - new Date(a.visitTime)).map(visit => (
+                                                            <div key={visit.id} style={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "24px", overflow: "hidden" }}>
+                                                                <div style={{ padding: "1.25rem 2rem", backgroundColor: visit.status === 'SCHEDULED' ? "#fff7ed" : "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                                                        <div style={{ width: "40px", height: "40px", borderRadius: "10px", backgroundColor: "white", display: "flex", alignItems: "center", justifyContent: "center", color: "#4f46e5", border: "1px solid #e2e8f0" }}>
+                                                                            <i className="fa-solid fa-user-doctor"></i>
+                                                                        </div>
+                                                                        <div>
+                                                                            <div style={{ fontWeight: "800", color: "#1e293b" }}>{visit.doctorName}</div>
+                                                                            <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: "600" }}>{visit.doctorSpecialization}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style={{ textAlign: "right" }}>
+                                                                        <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#1e293b" }}>{new Date(visit.visitTime).toLocaleString()}</div>
+                                                                        <span style={{ padding: "3px 10px", borderRadius: "12px", fontSize: "0.65rem", fontWeight: "900", backgroundColor: visit.status === 'SCHEDULED' ? "#fb923c" : "#10b981", color: "white" }}>{visit.status}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ padding: "1.5rem 2rem", display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem" }}>
+                                                                    <div>
+                                                                        <div style={{ marginBottom: "1.5rem" }}>
+                                                                            <div style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", marginBottom: "6px" }}>Clinical Observations</div>
+                                                                            <div style={{ fontSize: "0.9rem", color: "#334155", lineHeight: "1.6" }}>{visit.clinicalObservations}</div>
+                                                                        </div>
+                                                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                                                                            {visit.diagnosis && (
+                                                                                <div>
+                                                                                    <div style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", marginBottom: "4px" }}>Diagnosis</div>
+                                                                                    <div style={{ fontSize: "0.85rem", fontWeight: "700" }}>{visit.diagnosis}</div>
+                                                                                </div>
+                                                                            )}
+                                                                            {visit.treatmentPlan && (
+                                                                                <div>
+                                                                                    <div style={{ fontSize: "0.7rem", fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", marginBottom: "4px" }}>Plan</div>
+                                                                                    <div style={{ fontSize: "0.85rem", fontWeight: "700" }}>{visit.treatmentPlan}</div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    {visit.hasMedicationChange && (
+                                                                        <div style={{ borderLeft: "1px dashed #e2e8f0", paddingLeft: "1.5rem" }}>
+                                                                            <div style={{ fontSize: "0.65rem", fontWeight: "900", color: "#4f46e5", textTransform: "uppercase", marginBottom: "8px" }}>Med Changes</div>
+                                                                            {visit.medicationsAdded && <div style={{ fontSize: "0.8rem", color: "#1e40af", fontWeight: "700" }}>+ {visit.medicationsAdded}</div>}
+                                                                            {visit.medicationsDiscontinued && <div style={{ fontSize: "0.8rem", color: "#991b1b", fontWeight: "700" }}>- {visit.medicationsDiscontinued}</div>}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'orders' && (
                             <div style={{ textAlign: "center", padding: "5rem" }}>
                                 <i className="fa-solid fa-file-medical" style={{ fontSize: "3rem", color: "#cbd5e1" }}></i>
                                 <h3 style={{ marginTop: "1.5rem", color: "#64748b" }}>Clinical orders module coming soon</h3>

@@ -41,7 +41,7 @@ const AppRouter = () => {
         ROLES.ADMIN, ROLES.SURGEON, ROLES.ANESTHESIOLOGIST,
         ROLES.SCRUB_NURSE, ROLES.CIRCULATING_NURSE, ROLES.ANESTHESIA_NURSE,
         ROLES.OT_TECHNICIAN, ROLES.SURGICAL_TECH, ROLES.ANESTHESIA_TECHNICIAN,
-        ROLES.NURSE, ROLES.RECEPTIONIST, ROLES.BILLING_INCHARGE
+        ROLES.NURSE, ROLES.RECEPTIONIST, ROLES.BILLING_INCHARGE, ROLES.DOCTOR
     ];
 
     return (
@@ -77,7 +77,7 @@ const AppRouter = () => {
                         {/* Clinical & Operations (Shared) */}
                         <Route path="/operations-list" element={<RoleGuard allowedRoles={CLINICAL_ROLES}><OperationsListWrapper /></RoleGuard>} />
                         <Route path="/operation-monitoring/:operationId" element={<RoleGuard allowedRoles={CLINICAL_ROLES}><OperationMonitoring /></RoleGuard>} />
-                        <Route path="/operation-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.RECEPTIONIST]}><IpdRequests /></RoleGuard>} />
+                        <Route path="/operation-management" element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR]}><IpdRequests /></RoleGuard>} />
 
                         {/* RECEPTIONIST specific */}
                         <Route path="/room-management" element={<RoleGuard allowedRoles={[ROLES.RECEPTIONIST]}><Page title="Room Management" /></RoleGuard>} />
