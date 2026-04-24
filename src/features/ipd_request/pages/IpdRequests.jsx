@@ -6,6 +6,7 @@ import { useStaff } from "../../../features/staff/hooks/useStaff";
 import { useSurgeonAssignment } from "../../../features/operations/hooks/useSurgeonAssignment";
 import { useAuthContext } from "../../../context/AuthContext";
 import { ROLES } from "../../../shared/constants/roles";
+import { useIpdRequests } from "../hooks/useIpdRequests";
 
 const IpdRequests = () => {
     const { 
@@ -25,8 +26,11 @@ const IpdRequests = () => {
 
     const [searchTerm, setSearchTerm] = useState("");
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+    const [isAdmitModalOpen, setIsAdmitModalOpen] = useState(false);
     const [schedulingOp, setSchedulingOp] = useState(null);
     const [selectedTheaterId, setSelectedTheaterId] = useState("");
+
+    const { createOtRequest, loading: creatingRequest } = useIpdRequests();
     
     const [scheduleForm, setScheduleForm] = useState({
         roomId: "",
@@ -38,16 +42,30 @@ const IpdRequests = () => {
         endTime: ""
     });
 
+    const [admitForm, setAdmitForm] = useState({
+        patientName: "",
+        ipdAdmissionId: "",
+        procedureName: "",
+        surgeonId: "",
+        surgeonName: "",
+        preferredDate: "",
+        complexity: "MEDIUM"
+    });
+
     useEffect(() => {
         fetchRequestedOperations();
-        if (user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN) {
+        const authorizedRoles = [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.RECEPTIONIST];
+        if (authorizedRoles.includes(user?.role)) {
             fetchOTs();
             fetchAllStaff();
-            const loadSurgeons = async () => {
-                const res = await fetchAvailableSurgeons();
-                if (res.success) setAvailableSurgeons(res.data);
-            };
-            loadSurgeons();
+            
+            if (user?.role !== ROLES.RECEPTIONIST) {
+                const loadSurgeons = async () => {
+                    const res = await fetchAvailableSurgeons();
+                    if (res.success) setAvailableSurgeons(res.data);
+                };
+                loadSurgeons();
+            }
         }
     }, [fetchRequestedOperations, fetchOTs, fetchAllStaff, fetchAvailableSurgeons, user?.role]);
 
@@ -82,6 +100,34 @@ const IpdRequests = () => {
         }
     };
 
+    const handleAdmitSubmit = async (e) => {
+        e.preventDefault();
+        // Convert numeric fields
+        const payload = {
+            ...admitForm,
+            ipdAdmissionId: parseInt(admitForm.ipdAdmissionId),
+            surgeonId: admitForm.surgeonId.toString()
+        };
+        
+        const res = await createOtRequest(payload);
+        if (res.success) {
+            alert("Patient OT Request Created Successfully");
+            setIsAdmitModalOpen(false);
+            setAdmitForm({
+                patientName: "",
+                ipdAdmissionId: "",
+                procedureName: "",
+                surgeonId: "",
+                surgeonName: "",
+                preferredDate: "",
+                complexity: "MEDIUM"
+            });
+            fetchRequestedOperations();
+        } else {
+            alert(res.message || "Request creation failed.");
+        }
+    };
+
     const displayOperations = operations.filter(op => {
         return (
             op.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,9 +138,23 @@ const IpdRequests = () => {
 
     return (
         <div style={{ padding: "1.5rem" }}>
-            <div style={{ marginBottom: "2rem" }}>
-                <h1 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#0f172a" }}>IPD Surgical Requests</h1>
-                <p style={{ color: "#64748b", fontSize: "0.875rem" }}>Manage pending surgical requests from IPD and finalize scheduling</p>
+            <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                    <h1 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#0f172a" }}>IPD Surgical Requests</h1>
+                    <p style={{ color: "#64748b", fontSize: "0.875rem" }}>Manage pending surgical requests from IPD and finalize scheduling</p>
+                </div>
+                {(user?.role === ROLES.ADMIN || user?.role === ROLES.RECEPTIONIST) && (
+                    <button 
+                        onClick={() => setIsAdmitModalOpen(true)}
+                        style={{ 
+                            padding: "0.75rem 1.5rem", backgroundColor: "#10b981", color: "white", 
+                            border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "700",
+                            display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
+                        }}
+                    >
+                        <i className="fa-solid fa-user-plus"></i> Admit Patient (OT Request)
+                    </button>
+                )}
             </div>
 
             <div style={{ 
@@ -164,6 +224,110 @@ const IpdRequests = () => {
                 </div>
             )}
 
+            {/* Admit Patient Modal */}
+            {isAdmitModalOpen && (
+                <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1rem" }}>
+                    <form onSubmit={handleAdmitSubmit} className="login-card" style={{ maxWidth: "750px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.5)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                            <div>
+                                <h2 style={{ fontSize: "1.25rem", fontWeight: "800" }}>New OT Admission Request</h2>
+                                <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Create a surgical request for a patient from IPD</p>
+                            </div>
+                            <button type="button" onClick={() => setIsAdmitModalOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.5rem" }}>
+                                <i className="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                            <div style={{ gridColumn: "span 1" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PATIENT NAME</label>
+                                <input 
+                                    type="text" required
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "600" }} 
+                                    value={admitForm.patientName}
+                                    onChange={e => setAdmitForm({...admitForm, patientName: e.target.value})}
+                                />
+                            </div>
+
+                            <div style={{ gridColumn: "span 1" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>IPD ADMISSION ID</label>
+                                <input 
+                                    type="number" required
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "600" }} 
+                                    value={admitForm.ipdAdmissionId}
+                                    onChange={e => setAdmitForm({...admitForm, ipdAdmissionId: e.target.value})}
+                                />
+                            </div>
+
+                            <div style={{ gridColumn: "span 1" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PROCEDURE NAME</label>
+                                <input 
+                                    type="text" required
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "600" }} 
+                                    value={admitForm.procedureName}
+                                    onChange={e => setAdmitForm({...admitForm, procedureName: e.target.value})}
+                                />
+                            </div>
+
+                            <div style={{ gridColumn: "span 1" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PREFERRED DATE</label>
+                                <input 
+                                    type="datetime-local" required
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "600" }} 
+                                    value={admitForm.preferredDate}
+                                    onChange={e => setAdmitForm({...admitForm, preferredDate: e.target.value})}
+                                />
+                            </div>
+
+                            <div style={{ gridColumn: "span 1" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PRIMARY SURGEON</label>
+                                <select 
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
+                                    required
+                                    value={admitForm.surgeonId}
+                                    onChange={e => {
+                                        const s = staffList.find(x => x.id === parseInt(e.target.value));
+                                        setAdmitForm({...admitForm, surgeonId: e.target.value, surgeonName: s?.name || s?.userName || ""});
+                                    }}
+                                >
+                                    <option value="">Select Surgeon</option>
+                                    {staffList.filter(s => s.role === "SURGEON" || s.role === "DOCTOR").map(s => (
+                                        <option key={s.id} value={s.id}>{s.name || s.userName} ({s.role})</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ gridColumn: "span 1" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>COMPLEXITY</label>
+                                <select 
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
+                                    required
+                                    value={admitForm.complexity}
+                                    onChange={e => setAdmitForm({...admitForm, complexity: e.target.value})}
+                                >
+                                    <option value="LOW">LOW</option>
+                                    <option value="MEDIUM">MEDIUM</option>
+                                    <option value="HIGH">HIGH</option>
+                                </select>
+                            </div>
+
+                            <div style={{ gridColumn: "span 2", marginTop: "1rem" }}>
+                                <button 
+                                    type="submit" 
+                                    disabled={creatingRequest}
+                                    style={{ 
+                                        width: "100%", padding: "1rem", backgroundColor: "#10b981", color: "white", 
+                                        border: "none", borderRadius: "8px", fontWeight: "800", cursor: creatingRequest ? "not-allowed" : "pointer",
+                                        textTransform: "uppercase", letterSpacing: "1px", opacity: creatingRequest ? 0.7 : 1
+                                    }}
+                                >
+                                    {creatingRequest ? "Creating Request..." : "Submit OT Request"}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            )}
             {/* Scheduling Modal */}
             {isScheduleModalOpen && (
                 <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "1rem" }}>

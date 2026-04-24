@@ -11,6 +11,9 @@ export const doctorVisitService = {
     cancelVisit: (visitId) => 
         axiosInstance.put(DOCTOR_VISIT_ENDPOINTS.CANCEL.replace(":visitId", visitId)),
     
+    completeVisit: (visitId) => 
+        axiosInstance.put(DOCTOR_VISIT_ENDPOINTS.COMPLETE.replace(":visitId", visitId)),
+    
     getByAdmission: (admissionId) => 
         axiosInstance.get(DOCTOR_VISIT_ENDPOINTS.GET_BY_ADMISSION.replace(":admissionId", admissionId)),
     

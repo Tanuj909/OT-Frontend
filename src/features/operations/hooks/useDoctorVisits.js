@@ -57,6 +57,23 @@ export const useDoctorVisits = () => {
         }
     };
 
+    const completeVisit = async (visitId) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await doctorVisitService.completeVisit(visitId);
+            toast.success('Doctor visit completed successfully');
+            return response.data;
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Failed to complete visit';
+            setError(msg);
+            toast.error(msg);
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchVisitsByAdmission = useCallback(async (admissionId) => {
         setLoading(true);
         try {
@@ -109,6 +126,7 @@ export const useDoctorVisits = () => {
         createVisit,
         updateVisit,
         cancelVisit,
+        completeVisit,
         fetchVisitsByAdmission,
         fetchLatestVisit,
         fetchVisitsByStatus,

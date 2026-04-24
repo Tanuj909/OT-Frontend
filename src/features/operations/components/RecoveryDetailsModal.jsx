@@ -41,6 +41,7 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         createVisit,
         fetchVisitsByAdmission,
         cancelVisit,
+        completeVisit,
         fetchLatestVisit,
         fetchVisitsByStatus,
         loading: visitLoading
@@ -215,6 +216,22 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         }
     }, [admission, loadTasks, loadVisits, visitSubTab, visitStatusFilter]);
 
+    useEffect(() => {
+        // Auto-select doctor if current user is a doctor/surgeon
+        if ((user?.role === ROLES.DOCTOR || user?.role === ROLES.SURGEON) && staffList.length > 0) {
+            // Find current user in staff list if possible, or use user info directly
+            const currentStaff = staffList.find(s => s.email === user.email || s.userName === user.userName);
+            if (currentStaff) {
+                setVisitFormData(prev => ({
+                    ...prev,
+                    doctorId: currentStaff.id,
+                    doctorName: `${currentStaff.name} ${currentStaff.lastName}`,
+                    doctorSpecialization: currentStaff.specialization || 'Attending Physician'
+                }));
+            }
+        }
+    }, [user, staffList, setVisitFormData]);
+
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({
@@ -331,6 +348,20 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         if (window.confirm('Are you sure you want to cancel this task?')) {
             const res = await cancelTask(taskId);
             if (res) loadTasks();
+        }
+    };
+
+    const handleCompleteVisit = async (visitId) => {
+        if (window.confirm('Mark this doctor visit as completed?')) {
+            const res = await completeVisit(visitId);
+            if (res) loadVisits();
+        }
+    };
+
+    const handleCancelVisit = async (visitId) => {
+        if (window.confirm('Are you sure you want to cancel this scheduled visit?')) {
+            const res = await cancelVisit(visitId);
+            if (res) loadVisits();
         }
     };
 
@@ -518,11 +549,23 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                     display: "flex", alignItems: "center", gap: "0.5rem",
                                     color: "#ffffff", fontWeight: "800", fontSize: "0.85rem",
                                     boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
-                                    transition: "all 0.2s"
+                                    transition: "all 0.2s",
+                                    position: "relative"
                                 }}
                             >
                                 <i className="fa-solid fa-list-check"></i>
                                 Tasks
+                                {Array.isArray(tasks) && tasks.filter(t => t.status === 'PENDING').length > 0 && (
+                                    <span style={{
+                                        position: "absolute", top: "-8px", right: "-8px",
+                                        backgroundColor: "#ef4444", color: "white",
+                                        minWidth: "20px", height: "20px", borderRadius: "10px",
+                                        fontSize: "0.7rem", display: "flex", alignItems: "center",
+                                        justifyContent: "center", border: "2px solid white", padding: "0 4px"
+                                    }}>
+                                        {tasks.filter(t => t.status === 'PENDING').length}
+                                    </span>
+                                )}
                             </button>
                         )}
                         <button onClick={onClose} style={{ 
@@ -1273,20 +1316,28 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                 </div>
 
                                                 <div>
-                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Select Doctor</label>
-                                                    <select 
-                                                        required
-                                                        onChange={(e) => {
-                                                            const doc = staffList.find(s => s.id === parseInt(e.target.value));
-                                                            if (doc) handleDoctorSelect(doc);
-                                                        }}
-                                                        style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }}
-                                                    >
-                                                        <option value="">-- Choose Physician --</option>
-                                                        {staffList.filter(s => [ ROLES.DOCTOR].includes(s.role)).map(doc => (
-                                                            <option key={doc.id} value={doc.id}>{doc.name} ({doc.specialization || doc.role})</option>
-                                                        ))}
-                                                    </select>
+                                                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", marginBottom: "6px" }}>Physician In-Charge</label>
+                                                    { (user?.role === ROLES.DOCTOR || user?.role === ROLES.SURGEON) ? (
+                                                        <div style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #e2e8f0", backgroundColor: "#f1f5f9", fontWeight: "800", color: "#1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                            <span>{visitFormData.doctorName || user.userName}</span>
+                                                            <span style={{ fontSize: "0.65rem", backgroundColor: "#4f46e5", color: "white", padding: "2px 8px", borderRadius: "6px", textTransform: "uppercase" }}>{visitFormData.doctorSpecialization || user.role}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <select 
+                                                            required
+                                                            value={visitFormData.doctorId}
+                                                            onChange={(e) => {
+                                                                const doc = staffList.find(s => s.id === parseInt(e.target.value));
+                                                                if (doc) handleDoctorSelect(doc);
+                                                            }}
+                                                            style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }}
+                                                        >
+                                                            <option value="">-- Choose Physician --</option>
+                                                            {staffList.filter(s => [ROLES.DOCTOR, ROLES.SURGEON].includes(s.role) || s.role === 'DOCTOR').map(doc => (
+                                                                <option key={doc.id} value={doc.id}>{doc.name || `${doc.firstName} ${doc.lastName}`} ({doc.specialization || doc.role})</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
                                                 </div>
 
                                                 <div>
@@ -1507,7 +1558,36 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                                     </div>
                                                                     <div style={{ textAlign: "right" }}>
                                                                         <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#1e293b" }}>{new Date(visit.visitTime).toLocaleString()}</div>
-                                                                        <span style={{ padding: "3px 10px", borderRadius: "12px", fontSize: "0.65rem", fontWeight: "900", backgroundColor: visit.status === 'SCHEDULED' ? "#fb923c" : "#10b981", color: "white" }}>{visit.status}</span>
+                                                                        <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px", justifyContent: "flex-end" }}>
+                                                                            {visit.status === 'SCHEDULED' && (
+                                                                                <>
+                                                                                    {isDoctor && (
+                                                                                        <button 
+                                                                                            onClick={() => handleCompleteVisit(visit.id)}
+                                                                                            style={{ 
+                                                                                                padding: "6px 12px", backgroundColor: "#10b981", color: "white", 
+                                                                                                border: "none", borderRadius: "8px", fontSize: "0.75rem", fontWeight: "900", 
+                                                                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                                                                                                boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)"
+                                                                                            }}
+                                                                                        >
+                                                                                            <i className="fa-solid fa-check-double"></i> Complete Round
+                                                                                        </button>
+                                                                                    )}
+                                                                                    <button 
+                                                                                        onClick={() => handleCancelVisit(visit.id)}
+                                                                                        style={{ 
+                                                                                            padding: "6px 12px", backgroundColor: "#fee2e2", color: "#ef4444", 
+                                                                                            border: "1px solid #fecaca", borderRadius: "8px", fontSize: "0.75rem", fontWeight: "900", 
+                                                                                            cursor: "pointer", display: "flex", alignItems: "center", gap: "6px"
+                                                                                        }}
+                                                                                    >
+                                                                                        <i className="fa-solid fa-ban"></i> Cancel
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                            <span style={{ padding: "4px 12px", borderRadius: "12px", fontSize: "0.7rem", fontWeight: "900", backgroundColor: visit.status === 'SCHEDULED' ? "#fb923c" : (visit.status === 'CANCELLED' ? "#ef4444" : "#10b981"), color: "white" }}>{visit.status}</span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 <div style={{ padding: "1.5rem 2rem", display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem" }}>
