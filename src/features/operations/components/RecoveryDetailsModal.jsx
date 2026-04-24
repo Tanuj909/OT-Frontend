@@ -1283,8 +1283,8 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                         style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }}
                                                     >
                                                         <option value="">-- Choose Physician --</option>
-                                                        {staffList.filter(s => [ROLES.SURGEON, ROLES.DOCTOR, ROLES.ANESTHESIOLOGIST].includes(s.role)).map(doc => (
-                                                            <option key={doc.id} value={doc.id}>Dr. {doc.firstName} {doc.lastName} ({doc.specialization || doc.role})</option>
+                                                        {staffList.filter(s => [ ROLES.DOCTOR].includes(s.role)).map(doc => (
+                                                            <option key={doc.id} value={doc.id}>{doc.name} ({doc.specialization || doc.role})</option>
                                                         ))}
                                                     </select>
                                                 </div>

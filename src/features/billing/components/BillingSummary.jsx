@@ -28,9 +28,10 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
   const roomCharges = data.roomCharges?.rooms || [];
   const recoveryRoom = data.recoveryRoomCharges?.recoveryRoom || null;
   const itemCharges = data.itemCharges?.items || [];
+  const doctorVisits = data.doctorVisitCharges?.visits || [];
   const payments = data.payments || [];
   
-  const totalPages = 4;
+  const totalPages = 5;
 
   const PageHeader = ({ pageNum, title }) => (
     <div className="page-header">
@@ -401,14 +402,59 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
           <PageFooter pageNum={1} />
         </div>
 
-        {/* ══ PAGE 2: FACILITY & BED CHARGES ══ */}
+        {/* ══ PAGE 2: DOCTOR VISIT CHARGES ══ */}
         <div className="page">
-          <PageHeader pageNum={2} title="OT Billing: Facility & Bed Charges" />
+          <PageHeader pageNum={2} title="OT Billing: Doctor Visit Charges" />
+          
+          <div className="page-content">
+            {doctorVisits.length > 0 ? (
+                <div className="section">
+                    <div className="section-title">4. Doctor Consultation/Visit Charges</div>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Doctor Name</th>
+                                <th>Visit Time</th>
+                                <th className="text-right">Consultation Fee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {doctorVisits.map((visit, idx) => (
+                                <tr key={idx}>
+                                    <td>
+                                        <strong>{visit.doctorName || 'Medical Consultant'}</strong><br />
+                                        <small style={{ color: '#666' }}>Visit ID: #{visit.id}</small>
+                                    </td>
+                                    <td>{formatDate(visit.visitTime)}</td>
+                                    <td className="text-right">{formatCurrency(visit.fees)}</td>
+                                </tr>
+                            ))}
+                            <tr className="total-row">
+                                <td colSpan="2" className="text-right">Subtotal Visit Fees</td>
+                                <td className="text-right">{formatCurrency(data.doctorVisitCharges.totalAmount)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <div style={{ padding: '80px', textAlign: 'center', color: '#999' }}>
+                    <i className="fa-solid fa-user-doctor" style={{ fontSize: '30pt', marginBottom: '15px', color: '#eee' }}></i><br />
+                    No doctor consultation/visit charges applied to this billing session.
+                </div>
+            )}
+          </div>
+
+          <PageFooter pageNum={2} />
+        </div>
+
+        {/* ══ PAGE 3: FACILITY & BED CHARGES ══ */}
+        <div className="page">
+          <PageHeader pageNum={3} title="OT Billing: Facility & Bed Charges" />
 
           <div className="page-content">
             {roomCharges.length > 0 && (
                 <div className="section">
-                    <div className="section-title">4. OT Room Utilization Charges</div>
+                    <div className="section-title">5. OT Room Utilization Charges</div>
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -443,7 +489,7 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
 
             {recoveryRoom && (
                 <div className="section" style={{ marginTop: '20px' }}>
-                    <div className="section-title">5. Recovery Ward / ICU Charges</div>
+                    <div className="section-title">6. Recovery Ward / ICU Charges</div>
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -475,17 +521,17 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
             )}
           </div>
 
-          <PageFooter pageNum={2} />
+          <PageFooter pageNum={3} />
         </div>
 
-        {/* ══ PAGE 3: ITEMISED CLINICAL CHARGES ══ */}
+        {/* ══ PAGE 4: ITEMISED CLINICAL CHARGES ══ */}
         <div className="page">
-          <PageHeader pageNum={3} title="OT Billing: Clinical Itemisation" />
+          <PageHeader pageNum={4} title="OT Billing: Clinical Itemisation" />
 
           <div className="page-content">
             {itemCharges.length > 0 ? (
                 <div className="section">
-                    <div className="section-title">6. Clinical Items (Pharmacy, Consumables & Implants)</div>
+                    <div className="section-title">7. Clinical Items (Pharmacy, Consumables & Implants)</div>
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -524,17 +570,17 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
             )}
           </div>
 
-          <PageFooter pageNum={3} />
+          <PageFooter pageNum={4} />
         </div>
 
-        {/* ══ PAGE 4: SETTLEMENT & TERMES ══ */}
+        {/* ══ PAGE 5: SETTLEMENT & TERMES ══ */}
         <div className="page">
-          <PageHeader pageNum={4} title="OT Billing: Accounting & Terms" />
+          <PageHeader pageNum={5} title="OT Billing: Accounting & Terms" />
 
           <div className="page-content">
             {payments.length > 0 ? (
                 <div className="section">
-                    <div className="section-title">7. Settlement History</div>
+                    <div className="section-title">8. Settlement History</div>
                     <table className="data-table">
                         <thead>
                             <tr>
@@ -564,7 +610,7 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
                 </div>
             ) : (
                 <div className="section">
-                    <div className="section-title">7. Payment Status</div>
+                    <div className="section-title">8. Payment Status</div>
                     <div style={{ padding: '30px', border: '1px dashed #ccc', textAlign: 'center', color: '#666', borderRadius: '8px' }}>
                         No payments recorded for this invoice yet. Total amount of <strong>{formatCurrency(data.totalAmount)}</strong> is currently outstanding.
                     </div>
@@ -591,7 +637,7 @@ const BillingSummary = ({ isOpen, onClose, data }) => {
             </div>
           </div>
 
-          <PageFooter pageNum={4} />
+          <PageFooter pageNum={5} />
         </div>
       </div>
     </div>
