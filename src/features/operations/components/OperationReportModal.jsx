@@ -354,7 +354,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
               </div>
             </div>
             <div className="ph-title">Operation Theatre Report<br />
-              <span className="page-tag">Page 1 of 4 &nbsp;–&nbsp; Patient &amp; Surgery Overview</span>
+              <span className="page-tag">Page 1 of 5 &nbsp;–&nbsp; Patient &amp; Surgery Overview</span>
             </div>
           </div>
 
@@ -415,7 +415,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
           <div className="page-footer">
             <span>OT Report &nbsp;|&nbsp; {data.patientName} &nbsp;|&nbsp; {data.patientMrn} &nbsp;|&nbsp; OT-{data.operationId}</span>
             <span>Confidential — For Authorized Clinical Use Only</span>
-            <span>Page 1 / 4</span>
+            <span>Page 1 / 5</span>
           </div>
         </div>
 
@@ -434,7 +434,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
               </div>
             </div>
             <div className="ph-title">Operation Theatre Report<br />
-              <span className="page-tag">Page 2 of 4 &nbsp;–&nbsp; Pre-Operative Details</span>
+              <span className="page-tag">Page 2 of 5 &nbsp;–&nbsp; Pre-Operative Details</span>
             </div>
           </div>
 
@@ -491,7 +491,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
           <div className="page-footer">
             <span>OT Report &nbsp;|&nbsp; {data.patientName} &nbsp;|&nbsp; {data.patientMrn} &nbsp;|&nbsp; OT-{data.operationId}</span>
             <span>Confidential — For Authorized Clinical Use Only</span>
-            <span>Page 2 / 4</span>
+            <span>Page 2 / 5</span>
           </div>
         </div>
 
@@ -510,7 +510,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
               </div>
             </div>
             <div className="ph-title">Operation Theatre Report<br />
-              <span className="page-tag">Page 3 of 4 &nbsp;–&nbsp; Intra-Operative Details</span>
+              <span className="page-tag">Page 3 of 5 &nbsp;–&nbsp; Intra-Operative Details</span>
             </div>
           </div>
 
@@ -615,7 +615,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
           <div className="page-footer">
             <span>OT Report &nbsp;|&nbsp; {data.patientName} &nbsp;|&nbsp; {data.patientMrn} &nbsp;|&nbsp; OT-{data.operationId}</span>
             <span>Confidential — For Authorized Clinical Use Only</span>
-            <span>Page 3 / 4</span>
+            <span>Page 3 / 5</span>
           </div>
         </div>
 
@@ -634,7 +634,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
               </div>
             </div>
             <div className="ph-title">Operation Theatre Report<br />
-              <span className="page-tag">Page 4 of 4 &nbsp;–&nbsp; Post-Operative Details</span>
+              <span className="page-tag">Page 4 of 5 &nbsp;–&nbsp; Post-Operative Details</span>
             </div>
           </div>
 
@@ -644,8 +644,15 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
               <div className="kv-grid col4">
                 <div className="kv"><span className="kv-label">Post-Op Status</span><span className="kv-value">{(data.postOp.status || "—").replace(/_/g, " ")}</span></div>
                 <div className="kv"><span className="kv-label">Recovery Location</span><span className="kv-value">{data.postOp.recoveryLocation}</span></div>
+                <div className="kv"><span className="kv-label">Recovery Room</span><span className="kv-value">{data.postOp.recoveryRoom ? `${data.postOp.recoveryRoom.roomName} (${data.postOp.recoveryRoom.roomNumber})` : "—"}</span></div>
                 <div className="kv"><span className="kv-label">Recovery Start</span><span className="kv-value">{formatDate(data.postOp.recoveryStartTime)}</span></div>
+              </div>
+
+              <div className="kv-grid col4 mt6">
                 <div className="kv"><span className="kv-label">Surgery End Time</span><span className="kv-value">{formatDate(data.postOp.surgeryEndTime)}</span></div>
+                <div className="kv"><span className="kv-label">Recovery End Time</span><span className="kv-value">{formatDate(data.postOp.recoveryEndTime)}</span></div>
+                <div className="kv"><span className="kv-label">Aldrete Score</span><span className="kv-value">{data.postOp.aldreteScore || "—"}</span></div>
+                <div className="kv"><span className="kv-label">Transferred By</span><span className="kv-value">{data.postOp.transferredBy || "—"}</span></div>
               </div>
 
               <hr className="divider" />
@@ -659,11 +666,72 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
               <div className="kv-grid col2 mt6">
                 <div className="kv"><span className="kv-label">Dressing Details</span><span className="kv-value">{data.postOp.dressingDetails || "—"}</span></div>
                 <div className="kv"><span className="kv-label">Drain Details</span><span className="kv-value">{data.postOp.drainDetails || "—"}</span></div>
-                <div className="kv"><span className="kv-label">Aldrete Score</span><span className="kv-value">{data.postOp.aldreteScore || "—"}</span></div>
-                <div className="kv"><span className="kv-label">Recovery End Time</span><span className="kv-value">{formatDate(data.postOp.recoveryEndTime)}</span></div>
                 <div className="kv span2" style={{ gridColumn: 'span 2' }}><span className="kv-label">Follow-Up Plan</span><span className="kv-value">{data.postOp.followUpPlan || "—"}</span></div>
+                <div className="kv span2" style={{ gridColumn: 'span 2' }}><span className="kv-label">Post-Op Instructions</span><span className="kv-value">{data.postOp.postOpInstructions || "—"}</span></div>
               </div>
             </div>
+          </div>
+
+          <div className="page-footer">
+            <span>OT Report &nbsp;|&nbsp; {data.patientName} &nbsp;|&nbsp; {data.patientMrn} &nbsp;|&nbsp; OT-{data.operationId}</span>
+            <span>Confidential — For Authorized Clinical Use Only</span>
+            <span>Page 4 / 5</span>
+          </div>
+        </div>
+
+        {/* ══ PAGE 5 ══ */}
+        <div className="page">
+          <div className="page-header">
+            <div className="ph-top">
+              <div>
+                <div className="hospital-name">Apollo Medicity Hospital</div>
+                <div className="hospital-sub">123, Medical Campus Road, Sector 7, New Delhi – 110001 &nbsp;|&nbsp; +91-11-2600-0000</div>
+              </div>
+              <div className="report-meta">
+                <strong>Patient:</strong> {data.patientName} &nbsp;|&nbsp; <strong>MRN:</strong> {data.patientMrn}<br />
+                <strong>Op ID:</strong> OT-{data.operationId}<br />
+                <strong>Generated:</strong> {formatDate(new Date())}
+              </div>
+            </div>
+            <div className="ph-title">Operation Theatre Report<br />
+              <span className="page-tag">Page 5 of 5 &nbsp;–&nbsp; Doctor Visits &amp; Signatures</span>
+            </div>
+          </div>
+
+          <div className="page-content">
+            {data.postOp.doctorVisits?.length > 0 && (
+              <div className="section">
+                <div className="section-title">6. Doctor Visit Details</div>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '100px' }}>Time</th>
+                      <th style={{ width: '150px' }}>Doctor</th>
+                      <th>Observations &amp; Treatment Plan</th>
+                      <th style={{ width: '70px' }}>Discharge</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.postOp.doctorVisits.map((v, i) => (
+                      <tr key={i}>
+                        <td>{formatDate(v.visitTime)}</td>
+                        <td>
+                          <strong>{v.doctorName}</strong><br />
+                          <span style={{ fontSize: '7pt', color: '#6b6b6b' }}>{v.specialization}</span>
+                        </td>
+                        <td>
+                          {v.clinicalObservations && <div style={{ marginBottom: '4px' }}><strong>Obs:</strong> {v.clinicalObservations}</div>}
+                          {v.diagnosis && <div style={{ marginBottom: '4px' }}><strong>Diag:</strong> {v.diagnosis}</div>}
+                          {v.treatmentPlan && <div><strong>Plan:</strong> {v.treatmentPlan}</div>}
+                          {!v.clinicalObservations && !v.diagnosis && !v.treatmentPlan && "—"}
+                        </td>
+                        <td>{v.dischargeRecommended ? "Yes" : "No"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             <div className="section" style={{ marginTop: '30px' }}>
               <div className="section-title">Authorisation &amp; Signatures</div>
@@ -679,7 +747,7 @@ const OperationReportModal = ({ isOpen, onClose, data }) => {
           <div className="page-footer">
             <span>OT Report &nbsp;|&nbsp; {data.patientName} &nbsp;|&nbsp; {data.patientMrn} &nbsp;|&nbsp; OT-{data.operationId}</span>
             <span>Confidential — For Authorized Clinical Use Only</span>
-            <span>Page 4 / 4</span>
+            <span>Page 5 / 5</span>
           </div>
         </div>
       </div>

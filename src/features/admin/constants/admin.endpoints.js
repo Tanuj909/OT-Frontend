@@ -6,4 +6,5 @@ export const ADMIN_ENDPOINTS = {
     GET_OT_BY_ID: "/admin/operation-theaters/:id",
     UPDATE_OT: "/admin/operation-theaters/:id",
     DELETE_OT: "/admin/operation-theaters/:id",
+    GET_DASHBOARD: "/admin/dashboard",
 };

@@ -16,3 +16,6 @@ export const updateOTApi = (id, data) =>
 
 export const deleteOTApi = (id) =>
     axiosInstance.delete(ADMIN_ENDPOINTS.DELETE_OT.replace(":id", id));
+
+export const getAdminDashboardApi = () =>
+    axiosInstance.get(ADMIN_ENDPOINTS.GET_DASHBOARD);
