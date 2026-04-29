@@ -8,7 +8,8 @@ import {
     checkSurgeryStatusApi,
     getSurgeryReadinessApi,
     getOperationReportApi,
-    shiftSurgeryRoomApi
+    shiftSurgeryRoomApi,
+    readyForIpdTransferApi
 } from "../services/operationService";
 
 export const useOperations = () => {
@@ -139,6 +140,20 @@ export const useOperations = () => {
         }
     }, []);
 
+    const readyForIpdTransfer = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await readyForIpdTransferApi(id);
+            return { success: true, message: res.data?.message || "Patient marked as ready for IPD transfer." };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to mark patient ready for IPD transfer.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
@@ -151,6 +166,7 @@ export const useOperations = () => {
         checkSurgeryStatus,
         fetchSurgeryReadiness,
         fetchOperationReport,
-        shiftRoom
+        shiftRoom,
+        readyForIpdTransfer
     };
 };

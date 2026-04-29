@@ -8,5 +8,6 @@ export const OPERATION_ENDPOINTS = {
     GET_READINESS: "/operations/:id/surgery-readiness",
     GET_REPORT: "/operations/:id/report",
     END_SURGERY: "/operations/:id/end",
-    SHIFT_ROOM: "/surgery/:id/shift-room"
+    SHIFT_ROOM: "/surgery/:id/shift-room",
+    READY_FOR_IPD_TRANSFER: "/ot/:id/ready-for-ipd-transfer"
 };

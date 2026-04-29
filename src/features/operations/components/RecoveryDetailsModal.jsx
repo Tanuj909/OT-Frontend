@@ -7,6 +7,7 @@ import { useWardTasks } from '../hooks/useWardTasks';
 import { useDoctorVisits } from '../hooks/useDoctorVisits';
 import { useStaff } from '../../staff/hooks/useStaff';
 import { useAuth } from '../../auth/useAuth';
+import { useOperations } from '../hooks/useOperations';
 import { ROLES } from '../../../shared/constants/roles';
 import { toast } from 'react-hot-toast';
 
@@ -49,6 +50,7 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
     const { staffList, fetchAllStaff } = useStaff();
     const { user } = useAuth();
     const isDoctor = user?.role === ROLES.DOCTOR || user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.SURGEON;
+    const { readyForIpdTransfer, loading: transferLoading } = useOperations();
 
     const [admission, setAdmission] = useState(null);
     const [activeTab, setActiveTab] = useState('vitals');
@@ -58,6 +60,7 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
     const [showVitalsForm, setShowVitalsForm] = useState(false);
     const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
     const [dischargeLoading, setDischargeLoading] = useState(false);
+    const [isTransferRequested, setIsTransferRequested] = useState(false);
 
     // Medication State
     const [medicationUsage, setMedicationUsage] = useState([]);
@@ -450,6 +453,16 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         }
     };
 
+    const handleTransferToIpd = async () => {
+        const res = await readyForIpdTransfer(operationId);
+        if (res.success) {
+            toast.success(res.message || 'Patient marked as ready for IPD transfer!');
+            setIsTransferRequested(true);
+        } else {
+            toast.error(res.message || 'Failed to request IPD transfer.');
+        }
+    };
+
     const StatusBadge = ({ stable }) => (
         <span style={{
             padding: "4px 12px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "800",
@@ -515,6 +528,26 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                         )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        {admission && admission.dischargedWhen && (
+                            <button 
+                                onClick={handleTransferToIpd}
+                                disabled={transferLoading || isTransferRequested}
+                                style={{ 
+                                    padding: "0.625rem 1.25rem", 
+                                    background: (transferLoading || isTransferRequested) ? "#94a3b8" : "linear-gradient(135deg, #0ea5e9, #0284c7)", 
+                                    border: "none", 
+                                    cursor: (transferLoading || isTransferRequested) ? "not-allowed" : "pointer", 
+                                    borderRadius: "12px",
+                                    display: "flex", alignItems: "center", gap: "0.5rem",
+                                    color: "#ffffff", fontWeight: "800", fontSize: "0.85rem",
+                                    boxShadow: (transferLoading || isTransferRequested) ? "none" : "0 4px 12px rgba(14, 165, 233, 0.3)",
+                                    transition: "all 0.2s"
+                                }}
+                            >
+                                <i className="fa-solid fa-hospital-user"></i>
+                                {isTransferRequested ? 'Transfer Requested' : (transferLoading ? 'Requesting...' : 'Transfer to IPD')}
+                            </button>
+                        )}
                         {admission && !admission.dischargedWhen && (
                             <button 
                                 onClick={() => setShowDischargeConfirm(true)}
