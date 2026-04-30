@@ -9,7 +9,8 @@ import {
     getSurgeryReadinessApi,
     getOperationReportApi,
     shiftSurgeryRoomApi,
-    readyForIpdTransferApi
+    readyForIpdTransferApi,
+    getOperationStatusApi
 } from "../services/operationService";
 
 export const useOperations = () => {
@@ -154,6 +155,20 @@ export const useOperations = () => {
         }
     }, []);
 
+    const fetchOperationStatus = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await getOperationStatusApi(id);
+            return { success: true, data: res.data?.data || res.data };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to fetch operation status.");
+            return { success: false, message: err.response?.data?.message };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         loading,
         error,
@@ -167,6 +182,7 @@ export const useOperations = () => {
         fetchSurgeryReadiness,
         fetchOperationReport,
         shiftRoom,
-        readyForIpdTransfer
+        readyForIpdTransfer,
+        fetchOperationStatus
     };
 };

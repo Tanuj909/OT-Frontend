@@ -50,7 +50,8 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
     const { staffList, fetchAllStaff } = useStaff();
     const { user } = useAuth();
     const isDoctor = user?.role === ROLES.DOCTOR || user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.SURGEON;
-    const { readyForIpdTransfer, loading: transferLoading } = useOperations();
+    const { readyForIpdTransfer, fetchOperationStatus, loading: transferLoading } = useOperations();
+    const [operationStatus, setOperationStatus] = useState(null);
 
     const [admission, setAdmission] = useState(null);
     const [activeTab, setActiveTab] = useState('vitals');
@@ -61,6 +62,7 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
     const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
     const [dischargeLoading, setDischargeLoading] = useState(false);
     const [isTransferRequested, setIsTransferRequested] = useState(false);
+    const [showRoomDetails, setShowRoomDetails] = useState(false);
 
     // Medication State
     const [medicationUsage, setMedicationUsage] = useState([]);
@@ -142,6 +144,18 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         }
     }, [operationId, fetchActiveAdmission]);
 
+    const loadOperationStatus = useCallback(async () => {
+        const res = await fetchOperationStatus(operationId);
+        if (res.success) {
+            setOperationStatus(res.data);
+            // If there's any active transfer status, mark as requested to disable the button
+            const activeStatuses = ['READY_FOR_IPD_TRANSFER', 'PENDING', 'ACCEPTED_BY_IPD', 'IN_TRANSIT'];
+            if (activeStatuses.includes(res.data.transferStatus)) {
+                setIsTransferRequested(true);
+            }
+        }
+    }, [operationId, fetchOperationStatus]);
+
     const loadVitalsHistory = useCallback(async () => {
         const data = await fetchAllVitals(operationId);
         if (data) setVitalsHistory(data);
@@ -204,13 +218,14 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
 
     useEffect(() => {
         loadAdmission();
+        loadOperationStatus();
         loadVitalsHistory();
         loadLatestVital();
         loadStability();
         loadMedicationUsage();
         loadMedicationCatalog();
         fetchAllStaff();
-    }, [loadAdmission, loadVitalsHistory, loadLatestVital, loadStability, loadMedicationUsage, loadMedicationCatalog, fetchAllStaff]);
+    }, [loadAdmission, loadOperationStatus, loadVitalsHistory, loadLatestVital, loadStability, loadMedicationUsage, loadMedicationCatalog, fetchAllStaff]);
 
     useEffect(() => {
         if (admission) {
@@ -458,6 +473,7 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         if (res.success) {
             toast.success(res.message || 'Patient marked as ready for IPD transfer!');
             setIsTransferRequested(true);
+            loadOperationStatus();
         } else {
             toast.error(res.message || 'Failed to request IPD transfer.');
         }
@@ -510,9 +526,40 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                 }}>
                                     <i className="fa-solid fa-user-injured"></i>
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: "1rem", fontWeight: "800", color: "#1e293b" }}>{admission.patientName}</div>
-                                    <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: "600" }}>MRN: {admission.patientMrn} • {admission.roomName} (Bed {admission.bedNumber})</div>
+                                <div style={{ position: "relative" }}>
+                                    <div style={{ fontSize: "1.1rem", fontWeight: "900", color: "#1e293b", letterSpacing: "-0.01em" }}>{admission.patientName}</div>
+                                    <button 
+                                        onClick={() => setShowRoomDetails(!showRoomDetails)}
+                                        style={{ 
+                                            background: "none", border: "none", padding: 0, 
+                                            fontSize: "0.75rem", color: "#0ea5e9", fontWeight: "800", 
+                                            cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                            marginTop: "2px"
+                                        }}
+                                    >
+                                        Show Room Details <i className={`fa-solid fa-chevron-${showRoomDetails ? 'up' : 'down'}`} style={{ fontSize: "0.6rem" }}></i>
+                                    </button>
+                                    
+                                    {showRoomDetails && (
+                                        <div style={{ 
+                                            position: "absolute", top: "calc(100% + 10px)", left: "0", 
+                                            backgroundColor: "#ffffff", padding: "1rem", borderRadius: "16px",
+                                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                                            border: "1px solid #f1f5f9", zIndex: 100, minWidth: "240px",
+                                            display: "flex", flexDirection: "column", gap: "0.75rem"
+                                        }}>
+                                            <div>
+                                                <div style={{ fontSize: "0.65rem", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Patient MRN</div>
+                                                <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#1e293b" }}>{admission.patientMrn}</div>
+                                            </div>
+                                            <div style={{ display: "flex", gap: "1rem" }}>
+                                                <div>
+                                                    <div style={{ fontSize: "0.65rem", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Room / Bed</div>
+                                                    <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#1e293b" }}>{admission.roomName} (Bed {admission.bedNumber})</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <StatusBadge stable={isStable} />
                                 <span style={{
@@ -527,14 +574,38 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                             </div>
                         )}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        {operationStatus && operationStatus.transferStatus && (
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                                <span style={{
+                                    padding: "6px 12px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "800",
+                                    backgroundColor: operationStatus.transferStatus === 'ACCEPTED_BY_IPD' ? "#ecfdf5" : "#eff6ff",
+                                    color: operationStatus.transferStatus === 'ACCEPTED_BY_IPD' ? "#10b981" : "#3b82f6",
+                                    border: "1px solid " + (operationStatus.transferStatus === 'ACCEPTED_BY_IPD' ? "#d1fae5" : "#dbeafe"),
+                                    display: "flex", alignItems: "center", gap: "4px"
+                                }}>
+                                    <i className="fa-solid fa-circle-info"></i>
+                                    {operationStatus.transferStatus.replace(/_/g, ' ')}
+                                </span>
+                                {operationStatus.transferredTo && (
+                                    <span style={{
+                                        padding: "6px 12px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: "800",
+                                        backgroundColor: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0",
+                                        display: "flex", alignItems: "center", gap: "4px"
+                                    }}>
+                                        <i className="fa-solid fa-location-dot"></i>
+                                        {operationStatus.transferredTo}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                         {admission && admission.dischargedWhen && (
                             <button 
                                 onClick={handleTransferToIpd}
                                 disabled={transferLoading || isTransferRequested}
                                 style={{ 
                                     padding: "0.625rem 1.25rem", 
-                                    background: (transferLoading || isTransferRequested) ? "#94a3b8" : "linear-gradient(135deg, #0ea5e9, #0284c7)", 
+                                    background: (transferLoading || isTransferRequested) ? (operationStatus?.transferStatus === 'ACCEPTED_BY_IPD' ? "linear-gradient(135deg, #10b981, #059669)" : "#94a3b8") : "linear-gradient(135deg, #0ea5e9, #0284c7)", 
                                     border: "none", 
                                     cursor: (transferLoading || isTransferRequested) ? "not-allowed" : "pointer", 
                                     borderRadius: "12px",
@@ -544,8 +615,10 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                     transition: "all 0.2s"
                                 }}
                             >
-                                <i className="fa-solid fa-hospital-user"></i>
-                                {isTransferRequested ? 'Transfer Requested' : (transferLoading ? 'Requesting...' : 'Transfer to IPD')}
+                                <i className={`fa-solid ${operationStatus?.transferStatus === 'ACCEPTED_BY_IPD' ? 'fa-check-circle' : 'fa-hospital-user'}`}></i>
+                                {transferLoading ? 'Requesting...' : 
+                                 (operationStatus?.transferStatus === 'ACCEPTED_BY_IPD' ? 'Transferred Accepted' : 
+                                  (isTransferRequested ? 'Transfer Requested' : 'Transfer back to IPD'))}
                             </button>
                         )}
                         {admission && !admission.dischargedWhen && (
@@ -676,6 +749,27 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                     <div style={{ fontWeight: "800", color: item.color || "#1e293b", fontSize: "1rem", marginTop: "4px" }}>{item.value}</div>
                                                 </div>
                                             ))}
+                                            {operationStatus && (
+                                                <>
+                                                    <div>
+                                                        <div style={{ fontSize: "0.75rem", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase" }}>Transfer Status</div>
+                                                        <div style={{ 
+                                                            fontWeight: "800", 
+                                                            color: operationStatus.transferStatus === 'ACCEPTED_BY_IPD' ? "#10b981" : "#0ea5e9", 
+                                                            fontSize: "1rem", marginTop: "4px",
+                                                            display: "flex", alignItems: "center", gap: "6px"
+                                                        }}>
+                                                            {operationStatus.transferStatus?.replace(/_/g, ' ')}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: "0.75rem", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase" }}>Transferred To</div>
+                                                        <div style={{ fontWeight: "800", color: "#1e293b", fontSize: "1rem", marginTop: "4px" }}>
+                                                            {operationStatus.transferredTo || 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 

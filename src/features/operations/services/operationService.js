@@ -33,3 +33,6 @@ export const shiftSurgeryRoomApi = (id, newRoomId) =>
 
 export const readyForIpdTransferApi = (id) => 
     axiosInstance.post(OPERATION_ENDPOINTS.READY_FOR_IPD_TRANSFER.replace(":id", id));
+
+export const getOperationStatusApi = (id) => 
+    axiosInstance.get(OPERATION_ENDPOINTS.GET_STATUS.replace(":id", id));
