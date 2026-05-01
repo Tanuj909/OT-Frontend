@@ -29,6 +29,8 @@ const VitalsSection = () => {
         isStable: true
     });
 
+    const [formErrors, setFormErrors] = useState({});
+
     const refreshData = useCallback(async () => {
         const [allRes, latestRes] = await Promise.all([
             getAllVitals(operationId),
@@ -48,14 +50,50 @@ const VitalsSection = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
+        const newValue = type === "checkbox" ? checked : value;
+
         setFormData(prev => ({ 
             ...prev, 
-            [name]: type === "checkbox" ? checked : value 
+            [name]: newValue 
         }));
+
+        // Inline validation
+        if (type === "number" || name === "painScale") {
+            const check = [
+                { field: 'heartRate', label: 'Heart Rate', min: 30, max: 250 },
+                { field: 'systolicBp', label: 'Systolic BP', min: 60, max: 250 },
+                { field: 'diastolicBp', label: 'Diastolic BP', min: 40, max: 150 },
+                { field: 'meanBp', label: 'MAP', min: 40, max: 200 },
+                { field: 'respiratoryRate', label: 'Respiratory Rate', min: 4, max: 60 },
+                { field: 'temperature', label: 'Temperature', min: 30, max: 45 },
+                { field: 'oxygenSaturation', label: 'SpO2', min: 50, max: 100 },
+                { field: 'etco2', label: 'EtCO2', min: 0, max: 100 },
+                { field: 'painScale', label: 'Pain Scale', min: 0, max: 10 }
+            ].find(c => c.field === name);
+
+            if (check && value !== "") {
+                const num = Number(value);
+                if (num < check.min || num > check.max) {
+                    setFormErrors(prev => ({ ...prev, [name]: `Range: ${check.min}-${check.max}` }));
+                } else {
+                    setFormErrors(prev => ({ ...prev, [name]: null }));
+                }
+            } else {
+                setFormErrors(prev => ({ ...prev, [name]: null }));
+            }
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validate ranges
+        const validation = validateVitals(formData);
+        if (!validation.isValid) {
+            alert(validation.message);
+            return;
+        }
+
         // Build payload — convert numeric fields
         const payload = {
             ...formData,
@@ -99,15 +137,40 @@ const VitalsSection = () => {
 
     // Vital card configs for the live monitor grid
     const vitalCards = [
-        { key: "heartRate", label: "Heart Rate", unit: "bpm", icon: "fa-solid fa-heart-pulse", color: "#22c55e", range: "60-100" },
-        { key: "systolicBp", label: "Systolic BP", unit: "mmHg", icon: "fa-solid fa-arrow-up", color: "#ef4444", range: "90-140", secondary: { key: "diastolicBp", label: "Diastolic", unit: "mmHg" } },
-        { key: "oxygenSaturation", label: "SpO₂", unit: "%", icon: "fa-solid fa-lungs", color: "#06b6d4", range: "95-100" },
-        { key: "temperature", label: "Temp", unit: "°C", icon: "fa-solid fa-temperature-half", color: "#f59e0b", range: "36.0-37.5" },
-        { key: "respiratoryRate", label: "Resp. Rate", unit: "/min", icon: "fa-solid fa-wind", color: "#8b5cf6", range: "12-20" },
-        { key: "meanBp", label: "MAP", unit: "mmHg", icon: "fa-solid fa-gauge-high", color: "#6366f1", range: "70-105" },
-        { key: "etco2", label: "EtCO₂", unit: "mmHg", icon: "fa-solid fa-cloud", color: "#14b8a6", range: "35-45" },
-        { key: "painScale", label: "Pain", unit: "/10", icon: "fa-solid fa-face-grimace", color: "#64748b", range: "0-10" }
+        { key: "heartRate", label: "Heart Rate", unit: "bpm", icon: "fa-solid fa-heart-pulse", color: "#22c55e", range: "60-100", min: 30, max: 250 },
+        { key: "systolicBp", label: "Systolic BP", unit: "mmHg", icon: "fa-solid fa-arrow-up", color: "#ef4444", range: "90-140", min: 60, max: 250, secondary: { key: "diastolicBp", label: "Diastolic", unit: "mmHg", min: 40, max: 150 } },
+        { key: "oxygenSaturation", label: "SpO₂", unit: "%", icon: "fa-solid fa-lungs", color: "#06b6d4", range: "95-100", min: 50, max: 100 },
+        { key: "temperature", label: "Temp", unit: "°C", icon: "fa-solid fa-temperature-half", color: "#f59e0b", range: "36.0-37.5", min: 30, max: 45 },
+        { key: "respiratoryRate", label: "Resp. Rate", unit: "/min", icon: "fa-solid fa-wind", color: "#8b5cf6", range: "12-20", min: 4, max: 60 },
+        { key: "meanBp", label: "MAP", unit: "mmHg", icon: "fa-solid fa-gauge-high", color: "#6366f1", range: "70-105", min: 40, max: 200 },
+        { key: "etco2", label: "EtCO₂", unit: "mmHg", icon: "fa-solid fa-cloud", color: "#14b8a6", range: "35-45", min: 0, max: 100 },
+        { key: "painScale", label: "Pain", unit: "/10", icon: "fa-solid fa-face-grimace", color: "#64748b", range: "0-10", min: 0, max: 10 }
     ];
+
+    const validateVitals = (data) => {
+        const checks = [
+            { field: 'heartRate', label: 'Heart Rate', min: 30, max: 250 },
+            { field: 'systolicBp', label: 'Systolic BP', min: 60, max: 250 },
+            { field: 'diastolicBp', label: 'Diastolic BP', min: 40, max: 150 },
+            { field: 'meanBp', label: 'MAP', min: 40, max: 200 },
+            { field: 'respiratoryRate', label: 'Respiratory Rate', min: 4, max: 60 },
+            { field: 'temperature', label: 'Temperature', min: 30, max: 45 },
+            { field: 'oxygenSaturation', label: 'SpO2', min: 50, max: 100 },
+            { field: 'etco2', label: 'EtCO2', min: 0, max: 100 },
+            { field: 'painScale', label: 'Pain Scale', min: 0, max: 10 }
+        ];
+
+        for (const check of checks) {
+            const val = data[check.field];
+            if (val !== "" && val !== null && val !== undefined) {
+                const num = Number(val);
+                if (num < check.min || num > check.max) {
+                    return { isValid: false, message: `${check.label} must be between ${check.min} and ${check.max}` };
+                }
+            }
+        }
+        return { isValid: true };
+    };
 
     const formatTime = (isoStr) => {
         if (!isoStr) return "N/A";
@@ -149,19 +212,19 @@ const VitalsSection = () => {
                     </div>
                     <form onSubmit={handleSubmit} style={{ padding: "1.25rem" }}>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "1rem" }}>
-                            <FormInput label="Heart Rate (bpm)" name="heartRate" type="number" value={formData.heartRate} onChange={handleInputChange} placeholder="72" />
-                            <FormInput label="Systolic BP (mmHg)" name="systolicBp" type="number" value={formData.systolicBp} onChange={handleInputChange} placeholder="120" />
-                            <FormInput label="Diastolic BP (mmHg)" name="diastolicBp" type="number" value={formData.diastolicBp} onChange={handleInputChange} placeholder="80" />
-                            <FormInput label="MAP (mmHg)" name="meanBp" type="number" value={formData.meanBp} onChange={handleInputChange} placeholder="93" />
+                            <FormInput label="Heart Rate (bpm)" name="heartRate" type="number" value={formData.heartRate} onChange={handleInputChange} placeholder="72" min="30" max="250" error={formErrors.heartRate} />
+                            <FormInput label="Systolic BP (mmHg)" name="systolicBp" type="number" value={formData.systolicBp} onChange={handleInputChange} placeholder="120" min="60" max="250" error={formErrors.systolicBp} />
+                            <FormInput label="Diastolic BP (mmHg)" name="diastolicBp" type="number" value={formData.diastolicBp} onChange={handleInputChange} placeholder="80" min="40" max="150" error={formErrors.diastolicBp} />
+                            <FormInput label="MAP (mmHg)" name="meanBp" type="number" value={formData.meanBp} onChange={handleInputChange} placeholder="93" min="40" max="200" error={formErrors.meanBp} />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "1rem" }}>
-                            <FormInput label="Resp. Rate (/min)" name="respiratoryRate" type="number" value={formData.respiratoryRate} onChange={handleInputChange} placeholder="16" />
-                            <FormInput label="Temp. (°C)" name="temperature" type="number" value={formData.temperature} onChange={handleInputChange} placeholder="36.7" step="0.1" />
-                            <FormInput label="SpO₂ (%)" name="oxygenSaturation" type="number" value={formData.oxygenSaturation} onChange={handleInputChange} placeholder="98" />
-                            <FormInput label="EtCO₂ (mmHg)" name="etco2" type="number" value={formData.etco2} onChange={handleInputChange} placeholder="35" />
+                            <FormInput label="Resp. Rate (/min)" name="respiratoryRate" type="number" value={formData.respiratoryRate} onChange={handleInputChange} placeholder="16" min="4" max="60" error={formErrors.respiratoryRate} />
+                            <FormInput label="Temp. (°C)" name="temperature" type="number" value={formData.temperature} onChange={handleInputChange} placeholder="36.7" step="0.1" min="30" max="45" error={formErrors.temperature} />
+                            <FormInput label="SpO₂ (%)" name="oxygenSaturation" type="number" value={formData.oxygenSaturation} onChange={handleInputChange} placeholder="98" min="50" max="100" error={formErrors.oxygenSaturation} />
+                            <FormInput label="EtCO₂ (mmHg)" name="etco2" type="number" value={formData.etco2} onChange={handleInputChange} placeholder="35" min="0" max="100" error={formErrors.etco2} />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-                            <FormInput label="Pain Scale (0-10)" name="painScale" type="number" value={formData.painScale} onChange={handleInputChange} placeholder="3" min="0" max="10" />
+                            <FormInput label="Pain Scale (0-10)" name="painScale" type="number" value={formData.painScale} onChange={handleInputChange} placeholder="3" min="0" max="10" error={formErrors.painScale} />
                             <FormSelect label="Consciousness" name="consciousness" value={formData.consciousness} onChange={handleInputChange} options={CONSCIOUSNESS_OPTIONS} />
                             <FormSelect label="Sedation Score" name="sedationScore" value={formData.sedationScore} onChange={handleInputChange} options={["", ...SEDATION_OPTIONS]} />
                             <FormSelect label="Phase" name="phase" value={formData.phase} onChange={handleInputChange} options={["INTRA_OP", "POST_OP"]} />
@@ -444,8 +507,8 @@ const VitalBadge = ({ value, unit, color }) => (
     </span>
 );
 
-const FormInput = ({ label, name, type = "text", value, onChange, placeholder, step, min, max }) => (
-    <div>
+const FormInput = ({ label, name, type = "text", value, onChange, placeholder, step, min, max, error }) => (
+    <div style={{ position: "relative" }}>
         <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "800", marginBottom: "0.3rem", color: "#64748b" }}>{label}</label>
         <input
             type={type}
@@ -456,8 +519,19 @@ const FormInput = ({ label, name, type = "text", value, onChange, placeholder, s
             step={step}
             min={min}
             max={max}
-            style={{ width: "100%", padding: "0.55rem", borderRadius: "8px", border: "1.5px solid #e2e8f0", fontWeight: "700", fontSize: "0.8rem" }}
+            style={{ 
+                width: "100%", padding: "0.55rem", borderRadius: "8px", 
+                border: error ? "1.5px solid #ef4444" : "1.5px solid #e2e8f0", 
+                fontWeight: "700", fontSize: "0.8rem",
+                outline: "none",
+                transition: "border-color 0.2s"
+            }}
         />
+        {error && (
+            <div style={{ position: "absolute", bottom: "-0.9rem", left: "0.2rem", fontSize: "0.6rem", color: "#ef4444", fontWeight: "800" }}>
+                {error}
+            </div>
+        )}
     </div>
 );
 

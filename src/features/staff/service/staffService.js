@@ -44,3 +44,6 @@ export const checkStaffAvailabilityApi = (params) =>
 
 export const deleteStaffAvailabilityApi = (id) => 
     axiosInstance.delete(STAFF_ENDPOINTS.DELETE_AVAILABILITY.replace(":id", id));
+
+export const getAvailableStaffByTimeApi = (startTime, endTime) => 
+    axiosInstance.get(STAFF_ENDPOINTS.GET_AVAILABLE_BY_TIME, { params: { startTime, endTime } });

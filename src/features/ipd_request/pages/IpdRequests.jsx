@@ -3,10 +3,10 @@ import { useOperations } from "../../../features/operations/hooks/useOperations"
 import { useAdmin } from "../../../features/admin/hooks/useAdmin";
 import { useOtRoom } from "../../../features/admin/hooks/useOtroom";
 import { useStaff } from "../../../features/staff/hooks/useStaff";
-import { useSurgeonAssignment } from "../../../features/operations/hooks/useSurgeonAssignment";
 import { useAuthContext } from "../../../context/AuthContext";
 import { ROLES } from "../../../shared/constants/roles";
 import { useIpdRequests } from "../hooks/useIpdRequests";
+import { getAvailableStaffByTimeApi } from "../../../features/staff/service/staffService";
 
 const IpdRequests = () => {
     const { 
@@ -16,13 +16,14 @@ const IpdRequests = () => {
         fetchRequestedOperations, 
         scheduleOperation 
     } = useOperations();
-    const { fetchAvailableSurgeons } = useSurgeonAssignment();
 
-    const { ots, fetchOTs } = useAdmin();
+    const { activeOts, fetchActiveOTs } = useAdmin();
     const { rooms, fetchRoomsByTheater } = useOtRoom();
     const { staffList, fetchAllStaff } = useStaff();
     const { user } = useAuthContext();
     const [availableSurgeons, setAvailableSurgeons] = useState([]);
+    const [availableAnesthesiologists, setAvailableAnesthesiologists] = useState([]);
+    const [staffAvailabilityLoading, setStaffAvailabilityLoading] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState("");
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -56,18 +57,33 @@ const IpdRequests = () => {
         fetchRequestedOperations();
         const authorizedRoles = [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.RECEPTIONIST];
         if (authorizedRoles.includes(user?.role)) {
-            fetchOTs();
+            fetchActiveOTs();
             fetchAllStaff();
-            
-            if (user?.role !== ROLES.RECEPTIONIST) {
-                const loadSurgeons = async () => {
-                    const res = await fetchAvailableSurgeons();
-                    if (res.success) setAvailableSurgeons(res.data);
-                };
-                loadSurgeons();
-            }
         }
-    }, [fetchRequestedOperations, fetchOTs, fetchAllStaff, fetchAvailableSurgeons, user?.role]);
+    }, [fetchRequestedOperations, fetchActiveOTs, fetchAllStaff, user?.role]);
+
+    // Fetch available staff when both start and end time are set
+    useEffect(() => {
+        if (scheduleForm.startTime && scheduleForm.endTime) {
+            const fetchStaffByTime = async () => {
+                setStaffAvailabilityLoading(true);
+                try {
+                    const res = await getAvailableStaffByTimeApi(scheduleForm.startTime, scheduleForm.endTime);
+                    const data = res.data?.data || res.data;
+                    setAvailableSurgeons(data.surgeons || []);
+                    setAvailableAnesthesiologists(data.anesthesiologists || []);
+                } catch (err) {
+                    console.error("Failed to fetch staff availability", err);
+                } finally {
+                    setStaffAvailabilityLoading(false);
+                }
+            };
+            fetchStaffByTime();
+        } else {
+            setAvailableSurgeons([]);
+            setAvailableAnesthesiologists([]);
+        }
+    }, [scheduleForm.startTime, scheduleForm.endTime]);
 
     const handleTheaterChange = (e) => {
         const theaterId = e.target.value;
@@ -352,7 +368,7 @@ const IpdRequests = () => {
                                     onChange={handleTheaterChange}
                                 >
                                     <option value="">Select Theater Block</option>
-                                    {ots.map(ot => <option key={ot.id} value={ot.id}>{ot.name}</option>)}
+                                    {activeOts.map(ot => <option key={ot.id} value={ot.id}>{ot.name}</option>)}
                                 </select>
                             </div>
 
@@ -370,48 +386,6 @@ const IpdRequests = () => {
                                     </select>
                                 </div>
                             )}
-
-                            <div style={{ gridColumn: "span 2" }}>
-                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PRIMARY SURGEON</label>
-                                <select 
-                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
-                                    required
-                                    value={scheduleForm.surgeonId}
-                                    onChange={e => {
-                                        const s = availableSurgeons.find(x => x.id === parseInt(e.target.value)) || staffList.find(x => x.id === parseInt(e.target.value));
-                                        setScheduleForm({...scheduleForm, surgeonId: e.target.value, surgeonName: s?.userName || s?.name || s?.staffName || ""});
-                                    }}
-                                >
-                                    <option value="">Select Available Surgeon</option>
-                                    {availableSurgeons.length > 0 ? (
-                                        availableSurgeons.map(s => (
-                                            <option key={s.id} value={s.id}>{s.userName} ({s.role || "SURGEON"})</option>
-                                        ))
-                                    ) : (
-                                        staffList.filter(s => s.role === "SURGEON" || s.role === "DOCTOR").map(s => (
-                                            <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
-                                        ))
-                                    )}
-                                </select>
-                            </div>
-
-                            <div style={{ gridColumn: "span 2" }}>
-                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>ANESTHESIOLOGIST</label>
-                                <select 
-                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
-                                    required
-                                    value={scheduleForm.anesthesiologistId}
-                                    onChange={e => {
-                                        const s = staffList.find(x => x.id === parseInt(e.target.value));
-                                        setScheduleForm({...scheduleForm, anesthesiologistId: e.target.value, anesthesiologistName: s?.name || ""});
-                                    }}
-                                >
-                                    <option value="">Select Specialist</option>
-                                    {staffList.filter(s => s.role === "ANESTHESIOLOGIST" || s.role === "DOCTOR").map(s => (
-                                        <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
-                                    ))}
-                                </select>
-                            </div>
 
                             <div style={{ gridColumn: "span 1" }}>
                                 <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PROCEDURE START</label>
@@ -433,6 +407,64 @@ const IpdRequests = () => {
                                     value={scheduleForm.endTime}
                                     onChange={e => setScheduleForm({...scheduleForm, endTime: e.target.value})}
                                 />
+                            </div>
+
+                            {staffAvailabilityLoading && (
+                                <div style={{ gridColumn: "span 2", textAlign: "center", color: "#64748b", fontSize: "0.8rem", padding: "0.5rem" }}>
+                                    <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: "0.5rem" }}></i>Loading available staff...
+                                </div>
+                            )}
+
+                            <div style={{ gridColumn: "span 2" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>PRIMARY SURGEON {scheduleForm.startTime && scheduleForm.endTime ? "(By Availability)" : ""}</label>
+                                <select 
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
+                                    required
+                                    value={scheduleForm.surgeonId}
+                                    onChange={e => {
+                                        const s = availableSurgeons.find(x => x.id === parseInt(e.target.value)) || staffList.find(x => x.id === parseInt(e.target.value));
+                                        setScheduleForm({...scheduleForm, surgeonId: e.target.value, surgeonName: s?.userName || s?.name || s?.staffName || ""});
+                                    }}
+                                >
+                                    <option value="">Select Available Surgeon</option>
+                                    {availableSurgeons.length > 0 ? (
+                                        availableSurgeons.map(s => (
+                                            <option key={s.id} value={s.id} disabled={!s.isAvailable}>
+                                                {s.userName} {s.isAvailable ? "✅ Available" : "🔴 Busy"}
+                                            </option>
+                                        ))
+                                    ) : (
+                                        staffList.filter(s => s.role === "SURGEON" || s.role === "DOCTOR").map(s => (
+                                            <option key={s.id} value={s.id}>{s.name || s.userName} ({s.role})</option>
+                                        ))
+                                    )}
+                                </select>
+                            </div>
+
+                            <div style={{ gridColumn: "span 2" }}>
+                                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: "900", marginBottom: "0.4rem", color: "#64748b" }}>ANESTHESIOLOGIST {scheduleForm.startTime && scheduleForm.endTime ? "(By Availability)" : ""}</label>
+                                <select 
+                                    style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", fontWeight: "700" }} 
+                                    required
+                                    value={scheduleForm.anesthesiologistId}
+                                    onChange={e => {
+                                        const s = availableAnesthesiologists.find(x => x.id === parseInt(e.target.value)) || staffList.find(x => x.id === parseInt(e.target.value));
+                                        setScheduleForm({...scheduleForm, anesthesiologistId: e.target.value, anesthesiologistName: s?.userName || s?.name || ""});
+                                    }}
+                                >
+                                    <option value="">Select Specialist</option>
+                                    {availableAnesthesiologists.length > 0 ? (
+                                        availableAnesthesiologists.map(s => (
+                                            <option key={s.id} value={s.id} disabled={!s.isAvailable}>
+                                                {s.userName} {s.isAvailable ? "✅ Available" : "🔴 Busy"}
+                                            </option>
+                                        ))
+                                    ) : (
+                                        staffList.filter(s => s.role === "ANESTHESIOLOGIST" || s.role === "DOCTOR").map(s => (
+                                            <option key={s.id} value={s.id}>{s.name || s.userName} ({s.role})</option>
+                                        ))
+                                    )}
+                                </select>
                             </div>
 
                             <div style={{ gridColumn: "span 2", marginTop: "1rem" }}>

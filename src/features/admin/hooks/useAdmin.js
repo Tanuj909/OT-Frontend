@@ -4,13 +4,16 @@ import {
     getAllOTsApi, 
     getOTByIdApi, 
     updateOTApi, 
-    deleteOTApi
+    deleteOTApi,
+    getActiveOTsApi,
+    updateOTStatusApi
 } from "../service/adminApi";
 
 export const useAdmin = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [ots, setOts] = useState([]);
+    const [activeOts, setActiveOts] = useState([]);
     const [selectedOT, setSelectedOT] = useState(null);
 
     // ─── Operation Theater Hooks ──────────────────────────────────────────
@@ -22,6 +25,19 @@ export const useAdmin = () => {
             setOts(response.data || response || []); // Added fallback for raw array responses
         } catch (err) {
             setError(err.response?.data?.message || "Failed to fetch operation theaters.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const fetchActiveOTs = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { data: response } = await getActiveOTsApi();
+            setActiveOts(response.data || response || []);
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to fetch active operation theaters.");
         } finally {
             setLoading(false);
         }
@@ -90,16 +106,35 @@ export const useAdmin = () => {
         }
     }, []);
 
+    const updateOTStatus = useCallback(async (id, status) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { data: response } = await updateOTStatusApi(id, status);
+            const updatedOT = response.data || response;
+            setOts((prev) => prev.map((ot) => (ot.id === id ? { ...ot, status: updatedOT.status || status } : ot)));
+            return { success: true, message: response.message || "OT status updated successfully" };
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to update OT status.");
+            return { success: false };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
 
     return {
         loading,
         error,
         ots,
+        activeOts,
         selectedOT,
         fetchOTs,
+        fetchActiveOTs,
         fetchOTById,
         addOT,
         editOT,
         removeOT,
+        updateOTStatus,
     };
 };

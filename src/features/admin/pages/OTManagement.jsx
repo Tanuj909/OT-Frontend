@@ -5,7 +5,7 @@ import { useAdmin } from "../hooks/useAdmin";
 const OTManagement = () => {
     const { 
         loading, error, ots, 
-        fetchOTs, addOT, editOT, removeOT 
+        fetchOTs, addOT, editOT, removeOT, updateOTStatus
     } = useAdmin();
 
     const navigate = useNavigate();
@@ -54,6 +54,16 @@ const OTManagement = () => {
     
     const handleViewRooms = (ot) => {
         navigate(`/ot-room-management?otId=${ot.id}&otName=${encodeURIComponent(ot.name)}`);
+    };
+    
+    const handleToggleStatus = async (ot) => {
+        const newStatus = ot.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+        const res = await updateOTStatus(ot.id, newStatus);
+        if (res.success) {
+            // Success message or refresh if needed (local state is already updated in hook)
+        } else {
+            alert(res.message || "Failed to update status");
+        }
     };
 
     const openEditModal = (ot) => {
@@ -154,6 +164,18 @@ const OTManagement = () => {
                                 </td>
                                 <td style={{ padding: "1.25rem 1.5rem", textAlign: "right" }}>
                                     <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                                        <button 
+                                            onClick={() => handleToggleStatus(ot)}
+                                            title={ot.status === "ACTIVE" ? "Deactivate Theater" : "Activate Theater"}
+                                            style={{
+                                                padding: "0.5rem", borderRadius: "0.375rem", border: "1px solid var(--hospital-border)",
+                                                backgroundColor: ot.status === "ACTIVE" ? "#fee2e2" : "#ecfdf5", 
+                                                color: ot.status === "ACTIVE" ? "#ef4444" : "#10b981", 
+                                                cursor: "pointer"
+                                            }}
+                                        >
+                                            <i className={`fa-solid ${ot.status === "ACTIVE" ? "fa-toggle-on" : "fa-toggle-off"}`}></i>
+                                        </button>
                                         <button 
                                             onClick={() => handleViewRooms(ot)}
                                             title="View Rooms for this Theater"

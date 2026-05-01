@@ -16,5 +16,6 @@ export const STAFF_ENDPOINTS = {
     CREATE_AVAILABILITY: "/admin/staff-availability",
     GET_AVAILABILITY: "/admin/staff-availability/:id",
     CHECK_AVAILABILITY: "/admin/staff-availability/check",
+    GET_AVAILABLE_BY_TIME: "/admin/staff-availability/availability",
     DELETE_AVAILABILITY: "/admin/staff-availability/:id"
 };

@@ -137,6 +137,8 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
         additionalNotes: ''
     });
 
+    const [formErrors, setFormErrors] = useState({});
+
     const loadAdmission = useCallback(async () => {
         const res = await fetchActiveAdmission(operationId);
         if (res.success) {
@@ -252,10 +254,38 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
+        const newValue = type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) : value);
+        
         setFormData(prev => ({
             ...prev,
-            [name]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) : value)
+            [name]: newValue
         }));
+
+        // Inline validation
+        if (type === 'number' || name === 'painScale') {
+            const check = [
+                { field: 'heartRate', label: 'Heart Rate', min: 30, max: 250 },
+                { field: 'systolicBp', label: 'Systolic BP', min: 60, max: 250 },
+                { field: 'diastolicBp', label: 'Diastolic BP', min: 40, max: 150 },
+                { field: 'meanBp', label: 'Mean BP', min: 40, max: 200 },
+                { field: 'respiratoryRate', label: 'Respiratory Rate', min: 4, max: 60 },
+                { field: 'temperature', label: 'Temperature', min: 86, max: 113 },
+                { field: 'oxygenSaturation', label: 'SpO2', min: 50, max: 100 },
+                { field: 'etco2', label: 'EtCO2', min: 0, max: 100 },
+                { field: 'painScale', label: 'Pain Scale', min: 0, max: 10 }
+            ].find(c => c.field === name);
+
+            if (check && value !== "") {
+                const num = Number(value);
+                if (num < check.min || num > check.max) {
+                    setFormErrors(prev => ({ ...prev, [name]: `Range: ${check.min}-${check.max}` }));
+                } else {
+                    setFormErrors(prev => ({ ...prev, [name]: null }));
+                }
+            } else {
+                setFormErrors(prev => ({ ...prev, [name]: null }));
+            }
+        }
     };
 
     const handleMedInputChange = (e) => {
@@ -386,6 +416,30 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
     const handleSubmitVitals = async (e) => {
         e.preventDefault();
         if (!admission) return;
+
+        // Validate ranges
+        const checks = [
+            { field: 'heartRate', label: 'Heart Rate', min: 30, max: 250 },
+            { field: 'systolicBp', label: 'Systolic BP', min: 60, max: 250 },
+            { field: 'diastolicBp', label: 'Diastolic BP', min: 40, max: 150 },
+            { field: 'meanBp', label: 'Mean BP', min: 40, max: 200 },
+            { field: 'respiratoryRate', label: 'Respiratory Rate', min: 4, max: 60 },
+            { field: 'temperature', label: 'Temperature', min: 86, max: 113 },
+            { field: 'oxygenSaturation', label: 'SpO2', min: 50, max: 100 },
+            { field: 'etco2', label: 'EtCO2', min: 0, max: 100 },
+            { field: 'painScale', label: 'Pain Scale', min: 0, max: 10 }
+        ];
+
+        for (const check of checks) {
+            const val = formData[check.field];
+            if (val !== "" && val !== null && val !== undefined) {
+                const num = Number(val);
+                if (num < check.min || num > check.max) {
+                    toast.error(`${check.label} must be between ${check.min} and ${check.max}`);
+                    return;
+                }
+            }
+        }
 
         const res = await recordVitals(
             operationId, 
@@ -837,16 +891,16 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                         </div>
                                         
                                         {[
-                                            { name: 'heartRate', label: 'Heart Rate (bpm)', icon: 'fa-heart-pulse' },
-                                            { name: 'systolicBp', label: 'Systolic BP', icon: 'fa-gauge-high' },
-                                            { name: 'diastolicBp', label: 'Diastolic BP', icon: 'fa-gauge' },
-                                            { name: 'respiratoryRate', label: 'Resp. Rate', icon: 'fa-lungs' },
-                                            { name: 'temperature', label: 'Temp (°F)', icon: 'fa-temperature-half' },
-                                            { name: 'oxygenSaturation', label: 'SpO2 (%)', icon: 'fa-droplet' },
-                                            { name: 'etco2', label: 'EtCO2', icon: 'fa-wind' },
-                                            { name: 'meanBp', label: 'Mean BP', icon: 'fa-equals' }
+                                            { name: 'heartRate', label: 'Heart Rate (bpm)', icon: 'fa-heart-pulse', min: 30, max: 250 },
+                                            { name: 'systolicBp', label: 'Systolic BP', icon: 'fa-gauge-high', min: 60, max: 250 },
+                                            { name: 'diastolicBp', label: 'Diastolic BP', icon: 'fa-gauge', min: 40, max: 150 },
+                                            { name: 'respiratoryRate', label: 'Resp. Rate', icon: 'fa-lungs', min: 4, max: 60 },
+                                            { name: 'temperature', label: 'Temp (°F)', icon: 'fa-temperature-half', min: 86, max: 113 },
+                                            { name: 'oxygenSaturation', label: 'SpO2 (%)', icon: 'fa-droplet', min: 50, max: 100 },
+                                            { name: 'etco2', label: 'EtCO2', icon: 'fa-wind', min: 0, max: 100 },
+                                            { name: 'meanBp', label: 'Mean BP', icon: 'fa-equals', min: 40, max: 200 }
                                         ].map(field => (
-                                            <div key={field.name}>
+                                            <div key={field.name} style={{ position: "relative" }}>
                                                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>
                                                     {field.label}
                                                 </label>
@@ -854,12 +908,20 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                     <i className={`fa-solid ${field.icon}`} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.8rem" }}></i>
                                                     <input 
                                                         type="number" step="0.1" name={field.name} value={formData[field.name]} onChange={handleInputChange} required
+                                                        min={field.min} max={field.max}
                                                         style={{ 
-                                                            width: "100%", padding: "0.75rem 1rem 0.75rem 2.5rem", borderRadius: "12px", border: "1px solid #cbd5e1",
-                                                            fontSize: "0.9rem", fontWeight: "700", color: "#1e293b"
+                                                            width: "100%", padding: "0.75rem 1rem 0.75rem 2.5rem", borderRadius: "12px", 
+                                                            border: formErrors[field.name] ? "1.5px solid #ef4444" : "1px solid #cbd5e1",
+                                                            fontSize: "0.9rem", fontWeight: "700", color: "#1e293b",
+                                                            outline: "none", transition: "border-color 0.2s"
                                                         }}
                                                     />
                                                 </div>
+                                                {formErrors[field.name] && (
+                                                    <div style={{ position: "absolute", bottom: "-1.1rem", left: "0.5rem", fontSize: "0.65rem", color: "#ef4444", fontWeight: "800" }}>
+                                                        {formErrors[field.name]}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
 
@@ -879,10 +941,19 @@ const RecoveryDetailsModal = ({ operationId, onClose }) => {
                                                 <input type="text" name="sedationScore" value={formData.sedationScore} onChange={handleInputChange}
                                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }} />
                                             </div>
-                                            <div>
+                                            <div style={{ position: "relative" }}>
                                                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: "700", color: "#64748b", marginBottom: "6px" }}>Pain Scale (0-10)</label>
                                                 <input type="number" name="painScale" min="0" max="10" value={formData.painScale} onChange={handleInputChange}
-                                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: "700" }} />
+                                                    style={{ 
+                                                        width: "100%", padding: "0.75rem", borderRadius: "12px", 
+                                                        border: formErrors.painScale ? "1.5px solid #ef4444" : "1px solid #cbd5e1", 
+                                                        fontWeight: "700", outline: "none", transition: "border-color 0.2s" 
+                                                    }} />
+                                                {formErrors.painScale && (
+                                                    <div style={{ position: "absolute", bottom: "-1.1rem", left: "0.5rem", fontSize: "0.65rem", color: "#ef4444", fontWeight: "800" }}>
+                                                        {formErrors.painScale}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
